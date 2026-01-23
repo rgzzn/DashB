@@ -22,19 +22,27 @@ class KeychainHelper {
     func save(_ value: String, service: String, account: String) throws {
         guard let data = value.data(using: .utf8) else { return }
 
-        // Setup query for saving
-        let query: [String: Any] = [
+        // Query per cancellare l'eventuale item esistente (senza matchare il contenuto, solo account/service)
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+
+        // Delete existing item if present
+        SecItemDelete(deleteQuery as CFDictionary)
+
+        // Query per aggiungere il nuovo item
+        let addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: data,
+            // Importante: rende il token accessibile dopo il primo sblocco, quindi anche in background dopo un riavvio
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
 
-        // Delete existing item if present
-        SecItemDelete(query as CFDictionary)
-
-        // Add new item
-        let status = SecItemAdd(query as CFDictionary, nil)
+        let status = SecItemAdd(addQuery as CFDictionary, nil)
 
         if status != errSecSuccess {
             throw KeychainError.unexpectedStatus(status)
