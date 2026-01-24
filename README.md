@@ -1,7 +1,10 @@
 # DashB ✨
 
-**DashB** è una dashboard moderna in stile *bento* pensata per trasformare uno schermo (iPad, Mac o Apple TV) in un centro di controllo elegante: meteo, calendario e notizie in un’unica vista pulita e immersiva.  
-Progettata con SwiftUI, ha un look premium, animazioni morbide e un focus sulla leggibilità da lontano.
+**DashB** è una dashboard moderna in stile
+*bento* pensata per trasformare la tua **Apple
+TV** in un centro di controllo elegante: meteo, calendario e notizie in un'unica vista pulita e immersiva.
+Progettata con SwiftUI, ha un look premium, animazioni morbide e un focus sulla leggibilità
+da lontano.
 
 ---
 
