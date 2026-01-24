@@ -46,8 +46,7 @@ struct SettingsView: View {
 
     // Personalizzazione Utente
     @AppStorage("userName") private var userName = "Luca"
-    @AppStorage("showGreeting") private var showGreeting = true
-    @AppStorage("weatherCity") private var weatherCity = "Milano"
+    @AppStorage("showUserName") private var showUserName = true
 
     @State private var tempUserName: String = ""
     @State private var tempCity: String = ""
@@ -125,7 +124,7 @@ struct SettingsView: View {
             }
         }
         .onAppear {
-            tempCity = weatherCity
+            tempCity = weatherModel.selectedCity.isEmpty ? "Milano" : weatherModel.selectedCity
             tempUserName = userName
             focusedArea = .sidebar(.profile)
         }
@@ -158,7 +157,7 @@ struct SettingsView: View {
         switch category {
         case .profile:
             VStack(alignment: .leading, spacing: 30) {
-                Toggle(isOn: $showGreeting) {
+                Toggle(isOn: $showUserName) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Saluto Personalizzato")
                             .font(.title3)
@@ -321,7 +320,6 @@ struct SettingsView: View {
     private func applyAndDismiss() {
         let trimmedCity = tempCity.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedCity.isEmpty {
-            weatherCity = trimmedCity
             weatherModel.updateCity(trimmedCity)
         }
 
@@ -464,10 +462,8 @@ struct CalendarSelectionView<Service: CalendarService>: View {
                     for cal in fetched {
                         if !selectedConfigs.contains(where: { $0.id == cal.id }) {
                             var newCal = cal
-                            newCal.colorHex =
-                                basicColors[
-                                    availableCalendars.firstIndex(where: { $0.id == cal.id }) ?? 0
-                                        % basicColors.count]
+                            let index = availableCalendars.firstIndex(where: { $0.id == cal.id }) ?? 0
+                            newCal.colorHex = basicColors[index % basicColors.count]
                             selectedConfigs.append(newCal)
                         }
                     }
