@@ -272,7 +272,7 @@ class OutlookCalendarService: NSObject, CalendarService {
         let encodedID =
             calendarID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "primary"
         let urlString =
-            "https://graph.microsoft.com/v1.0/me/calendars/\(encodedID)/events?$filter=start/dateTime ge '\(timeMin)'&$orderby=start/dateTime&$top=15"
+            "https://graph.microsoft.com/v1.0/me/calendars/\(encodedID)/events?$filter=end/dateTime ge '\(timeMin)'&$orderby=start/dateTime&$top=15"
 
         guard let url = URL(string: urlString) else { return [] }
 
@@ -305,9 +305,21 @@ class OutlookCalendarService: NSObject, CalendarService {
                     let isoFormatter = ISO8601DateFormatter()
                     if let date = isoFormatter.date(from: dateTime) ?? fallbackDate(from: dateTime)
                     {
+                        var endDate: Date?
+                        if let endDict = item["end"] as? [String: Any],
+                            let endDateTime = endDict["dateTime"] as? String
+                        {
+                            endDate =
+                                isoFormatter.date(from: endDateTime)
+                                ?? fallbackDate(from: endDateTime)
+                        }
+
+                        let finalEndDate = endDate ?? date
+
                         events.append(
                             DashboardEvent(
-                                title: subject, startDate: date, location: locationName,
+                                title: subject, startDate: date, endDate: finalEndDate,
+                                location: locationName,
                                 color: .blue, calendarID: calendarID, isAllDay: isAllDay))
                     }
                 }

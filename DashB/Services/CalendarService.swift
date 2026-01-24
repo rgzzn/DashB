@@ -13,6 +13,7 @@ struct DashboardEvent: Identifiable {
     let id = UUID()
     let title: String
     let startDate: Date
+    let endDate: Date
     let location: String?
     var color: Color
     let calendarID: String

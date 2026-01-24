@@ -127,10 +127,12 @@ class CalendarManager: ObservableObject {
 
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: Date())
-            let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+            let tomorrow =
+                calendar.date(byAdding: .day, value: 1, to: today)
+                ?? today.addingTimeInterval(86400)
 
             let filtered = allEvents.filter { event in
-                event.startDate >= today && event.startDate < tomorrow
+                event.endDate >= today && event.startDate < tomorrow
             }
 
             let sorted = filtered.sorted { $0.startDate < $1.startDate }

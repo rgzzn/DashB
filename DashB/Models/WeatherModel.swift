@@ -201,8 +201,11 @@ class WeatherModel: NSObject, ObservableObject {
     private func currentLocation() async -> CLLocation? {
         if let loc = locationManager.location { return loc }
         return await withCheckedContinuation { continuation in
-            locationRequestContinuation = continuation
-            locationManager.requestLocation()
+            let shouldRequest = locationRequestContinuations.isEmpty
+            locationRequestContinuations.append(continuation)
+            if shouldRequest {
+                locationManager.requestLocation()
+            }
         }
     }
 
@@ -658,7 +661,7 @@ class WeatherModel: NSObject, ObservableObject {
     }
 
     // MARK: - Location continuation
-    private var locationRequestContinuation: CheckedContinuation<CLLocation?, Never>?
+    private var locationRequestContinuations: [CheckedContinuation<CLLocation?, Never>] = []
 
     deinit {
         timer?.invalidate()
@@ -684,12 +687,12 @@ extension WeatherModel: CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         if let loc = locations.last {
-            locationRequestContinuation?.resume(returning: loc)
-            locationRequestContinuation = nil
+            locationRequestContinuations.forEach { $0.resume(returning: loc) }
+            locationRequestContinuations.removeAll()
             Task { await fetchWeather(for: loc) }
         } else {
-            locationRequestContinuation?.resume(returning: nil)
-            locationRequestContinuation = nil
+            locationRequestContinuations.forEach { $0.resume(returning: nil) }
+            locationRequestContinuations.removeAll()
         }
     }
 
@@ -697,7 +700,7 @@ extension WeatherModel: CLLocationManagerDelegate {
         #if DEBUG
             print("Location error: \(error)")
         #endif
-        locationRequestContinuation?.resume(returning: nil)
-        locationRequestContinuation = nil
+        locationRequestContinuations.forEach { $0.resume(returning: nil) }
+        locationRequestContinuations.removeAll()
     }
 }

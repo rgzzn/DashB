@@ -72,7 +72,8 @@ class RSSModel: ObservableObject {
 
             // Sort by rawDate (most recent first)
             let sortedItems = allItems.sorted { (item1, item2) -> Bool in
-                guard let date1 = item1.rawDate, let date2 = item2.rawDate else { return false }
+                let date1 = item1.rawDate ?? .distantPast
+                let date2 = item2.rawDate ?? .distantPast
                 return date1 > date2
             }
 

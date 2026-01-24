@@ -288,7 +288,9 @@ class GoogleCalendarService: NSObject, CalendarService {
                     let startDict = item["start"] as? [String: Any]
                 {
                     var date: Date?
+                    var endDate: Date?
                     var isAllDay = false
+
                     if let dt = startDict["dateTime"] as? String {
                         date = formatter.date(from: dt)
                         isAllDay = false
@@ -298,11 +300,24 @@ class GoogleCalendarService: NSObject, CalendarService {
                         date = df.date(from: d)
                         isAllDay = true
                     }
+
+                    if let endDict = item["end"] as? [String: Any] {
+                        if let dt = endDict["dateTime"] as? String {
+                            endDate = formatter.date(from: dt)
+                        } else if let d = endDict["date"] as? String {
+                            let df = DateFormatter()
+                            df.dateFormat = "yyyy-MM-dd"
+                            endDate = df.date(from: d)
+                        }
+                    }
+
                     let location = item["location"] as? String
                     if let d = date {
+                        let finalEndDate = endDate ?? d
                         events.append(
                             DashboardEvent(
-                                title: summary, startDate: d, location: location, color: .red,
+                                title: summary, startDate: d, endDate: finalEndDate,
+                                location: location, color: .red,
                                 calendarID: calendarID, isAllDay: isAllDay))
                     }
                 }
