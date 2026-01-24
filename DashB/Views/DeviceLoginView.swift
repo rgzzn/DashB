@@ -102,7 +102,7 @@ struct DeviceLoginView: View {
                             Text("Scannerizza ora").font(.headline)
                         }
 
-                        // Instructions
+                        // Istruzioni
                         VStack(alignment: .leading, spacing: 35) {
                             Text("Connetti \(service.serviceName)")
                                 .font(.system(size: 56, weight: .bold))
@@ -216,7 +216,7 @@ struct DeviceLoginView: View {
                     }
                     return
                 }
-                // Use 5 seconds interval as recommended by Google to avoid slow_down blocks
+                // Usa intervallo di 5 secondi come raccomandato da Google per evitare blocchi slow_down
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
             }
         }

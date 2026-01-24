@@ -26,10 +26,10 @@ class KeychainHelper {
         let deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecAttrAccount as String: account,
         ]
 
-        // Delete existing item if present
+        // Elimina elemento esistente se presente
         SecItemDelete(deleteQuery as CFDictionary)
 
         // Query per aggiungere il nuovo item
@@ -39,7 +39,7 @@ class KeychainHelper {
             kSecAttrAccount as String: account,
             kSecValueData as String: data,
             // Importante: rende il token accessibile dopo il primo sblocco, quindi anche in background dopo un riavvio
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
         ]
 
         let status = SecItemAdd(addQuery as CFDictionary, nil)

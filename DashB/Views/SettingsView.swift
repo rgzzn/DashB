@@ -12,7 +12,7 @@ struct SettingsView: View {
     @EnvironmentObject var calendarManager: CalendarManager
     @Environment(\.dismiss) private var dismiss
 
-    // Navigation state
+    // Stato di navigazione
     enum SettingsCategory: String, CaseIterable, Identifiable {
         case profile = "Profilo"
         case weather = "Meteo"
@@ -37,14 +37,14 @@ struct SettingsView: View {
         case closeButton
     }
 
-    // Auth state
+    // Stato auth
     @State private var authServiceItem: AuthServiceItem?
     struct AuthServiceItem: Identifiable {
         let service: any CalendarService
         var id: String { service.serviceName }
     }
 
-    // User Personalization
+    // Personalizzazione Utente
     @AppStorage("userName") private var userName = "Luca"
     @AppStorage("showGreeting") private var showGreeting = true
     @AppStorage("weatherCity") private var weatherCity = "Milano"
@@ -54,12 +54,12 @@ struct SettingsView: View {
 
     var body: some View {
         ZStack {
-            // Background consistent with Dashboard
+            // Sfondo coerente con Dashboard
             GradientBackgroundView()
                 .ignoresSafeArea()
 
             HStack(spacing: 0) {
-                // MARK: - Sidebar
+                // MARK: - Barra laterale
                 VStack(alignment: .leading, spacing: 15) {
                     Text("Impostazioni")
                         .font(.system(size: 44, weight: .bold))
@@ -105,7 +105,7 @@ struct SettingsView: View {
                 .frame(width: 400)
                 .background(Color.black.opacity(0.2))
 
-                // MARK: - Main Content Area
+                // MARK: - Area Contenuto Principale
                 VStack(alignment: .leading, spacing: 0) {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 35) {
@@ -460,7 +460,7 @@ struct CalendarSelectionView<Service: CalendarService>: View {
                 let fetched = try await service.fetchAvailableCalendars()
                 await MainActor.run {
                     self.availableCalendars = fetched
-                    // Auto-activate all calendars by default if they are not already selected
+                    // Attiva automaticamente tutti i calendari per impostazione predefinita se non sono già selezionati
                     for cal in fetched {
                         if !selectedConfigs.contains(where: { $0.id == cal.id }) {
                             var newCal = cal

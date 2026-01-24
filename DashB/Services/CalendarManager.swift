@@ -13,7 +13,7 @@ class CalendarManager: ObservableObject {
     @Published var upcomingEvents: [DashboardEvent] = []
     @Published var isRefreshing: Bool = false
 
-    // Persistence
+    // Persistenza
     @AppStorage("selectedGoogleCalendars") private var selectedGoogleCalendarsData: Data = Data()
     @AppStorage("selectedOutlookCalendars") private var selectedOutlookCalendarsData: Data = Data()
 
@@ -33,14 +33,14 @@ class CalendarManager: ObservableObject {
         set { selectedOutlookCalendarsData = (try? JSONEncoder().encode(newValue)) ?? Data() }
     }
 
-    // Services
+    // Servizi
     let googleService = GoogleCalendarService()
     let outlookService = OutlookCalendarService()
 
     private var cancellables = Set<AnyCancellable>()
 
     init() {
-        // Redirection of changes to the UI
+        // Reindirizzamento delle modifiche all'UI
         googleService.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
@@ -55,7 +55,7 @@ class CalendarManager: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] connected in
                 if connected {
-                    print("DEBUG: Google connected. Fetching...")
+                    print("DEBUG: Google connesso. Fetching...")
                     self?.fetchEvents()
                 }
             }
@@ -63,7 +63,7 @@ class CalendarManager: ObservableObject {
 
         fetchEvents()
 
-        // Periodically refresh every 5 mins
+        // Aggiorna periodicamente ogni 5 min
         Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             self?.fetchEvents()
         }
@@ -75,13 +75,13 @@ class CalendarManager: ObservableObject {
 
             var allEvents: [DashboardEvent] = []
 
-            // Fetch Google
+            // Recupera Google
             if googleService.isConnected {
                 let ids = selectedGoogleCalendars.map { $0.id }
                 if !ids.isEmpty {
                     do {
                         let events = try await googleService.fetchEvents(for: ids)
-                        // Apply custom colors
+                        // Applica colori personalizzati
                         let enriched = events.map { event -> DashboardEvent in
                             var e = event
                             if let config = selectedGoogleCalendars.first(where: {
@@ -100,13 +100,13 @@ class CalendarManager: ObservableObject {
                 }
             }
 
-            // Fetch Outlook
+            // Recupera Outlook
             if outlookService.isConnected {
                 let ids = selectedOutlookCalendars.map { $0.id }
                 if !ids.isEmpty {
                     do {
                         let events = try await outlookService.fetchEvents(for: ids)
-                        // Apply custom colors
+                        // Applica colori personalizzati
                         let enriched = events.map { event -> DashboardEvent in
                             var e = event
                             if let config = selectedOutlookCalendars.first(where: {
@@ -145,7 +145,7 @@ class CalendarManager: ObservableObject {
     }
 }
 
-// Helper to init Color from Hex
+// Helper per inizializzare Colore da Hex
 extension Color {
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)

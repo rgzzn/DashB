@@ -12,7 +12,7 @@ struct DashboardView: View {
     @EnvironmentObject private var calendarManager: CalendarManager
     @State private var showingSettings = false
 
-    // User Settings
+    // Impostazioni Utente
     @AppStorage("userName") private var userName = "Luca"
     @AppStorage("showUserName") private var showUserName = true
 
@@ -24,7 +24,7 @@ struct DashboardView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 40) {
-                // MARK: - Header
+                // MARK: - Intestazione
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(showUserName ? "Buona sera, \(userName)" : "Buona sera")
@@ -42,24 +42,24 @@ struct DashboardView: View {
                 .padding(.horizontal, 60)
                 .padding(.top, 40)
 
-                // MARK: - Main Content (Bento Grid)
+                // MARK: - Contenuto Principale (Griglia Bento)
                 HStack(spacing: 30) {
-                    // Column 1: Weather
+                    // Colonna 1: Meteo
                     WeatherView()
-                        .frame(maxWidth: 400)  // Fixed width for nice proportion
+                        .frame(maxWidth: 400)  // Larghezza fissa per belle proporzioni
 
-                    // Column 2: Calendar
+                    // Colonna 2: Calendario
                     CalendarView()
                         .frame(maxWidth: 400)
 
-                    // Column 3: News / Hero
+                    // Colonna 3: Notizie / Hero
                     NewsTickerView()
                         .frame(maxWidth: .infinity)
                 }
                 .frame(maxHeight: .infinity)
                 .padding(.horizontal, 60)
 
-                // MARK: - Footer (Actions)
+                // MARK: - Pié di pagina (Azioni)
                 HStack {
                     Spacer()
 
@@ -74,7 +74,7 @@ struct DashboardView: View {
                                     .fill(.ultraThinMaterial)
                             )
                     }
-                    .buttonStyle(.card)  // Use card style for native focus effect
+                    .buttonStyle(.card)  // Usa stile scheda per effetto focus nativo
                     .focused($isSettingsFocused)
                 }
                 .padding(.horizontal, 80)

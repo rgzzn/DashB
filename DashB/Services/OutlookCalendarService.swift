@@ -13,7 +13,7 @@ class OutlookCalendarService: NSObject, CalendarService {
     @Published var isConnected: Bool = false
     let serviceName = "Outlook / Microsoft 365"
 
-    // MARK: - Configuration
+    // MARK: - Configurazione
     private let clientID = "60f1d70e-d828-4638-b3d0-61588d393a4e"
     private let clientSecret = "Iw88Q~bTf4vSaS370Q6StvV1n~ClxvzGdHqCc-Sr"
     private let tenantID = "f53380d6-48f1-4cde-a11f-015ed6f5e159"
@@ -26,7 +26,7 @@ class OutlookCalendarService: NSObject, CalendarService {
         "https://login.microsoftonline.com/\(tenantID)/oauth2/v2.0/token"
     }
 
-    // Keychain Keys
+    // Chiavi Keychain
     private let keychainService = "DashB.Outlook"
     private let accessTokenKey = "accessToken"
     private let refreshTokenKey = "refreshToken"
@@ -44,7 +44,7 @@ class OutlookCalendarService: NSObject, CalendarService {
         }
     }
 
-    // MARK: - Device Flow Authentication
+    // MARK: - Autenticazione Flusso Dispositivo
 
     func startDeviceAuth() async throws -> DeviceAuthInfo {
         guard let url = URL(string: deviceAuthEndpoint) else {
@@ -131,7 +131,7 @@ class OutlookCalendarService: NSObject, CalendarService {
                             refreshToken, service: keychainService, account: refreshTokenKey)
                     }
 
-                    // Small delay for Keychain Sync
+                    // Piccolo ritardo per sincronizzazione Keychain
                     try? await Task.sleep(nanoseconds: 200_000_000)
 
                     await MainActor.run {
@@ -203,7 +203,7 @@ class OutlookCalendarService: NSObject, CalendarService {
         }
     }
 
-    // MARK: - Fetching Events
+    // MARK: - Recupero Eventi
 
     func fetchAvailableCalendars() async throws -> [CalendarInfo] {
         guard

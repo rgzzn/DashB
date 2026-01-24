@@ -13,7 +13,7 @@ class GoogleCalendarService: NSObject, CalendarService {
     @Published var isConnected: Bool = false
     let serviceName = "Google Calendar"
 
-    // MARK: - Configuration
+    // MARK: - Configurazione
     private let clientID =
         "312785097359-987aqfia9t8m2ct6vurt36el99o0hl48.apps.googleusercontent.com"
     private let clientSecret = "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"
@@ -22,7 +22,7 @@ class GoogleCalendarService: NSObject, CalendarService {
     private let deviceAuthEndpoint = "https://oauth2.googleapis.com/device/code"
     private let tokenEndpoint = "https://oauth2.googleapis.com/token"
 
-    // Keychain Keys
+    // Chiavi Keychain
     private let keychainService = "DashB.Google"
     private let accessTokenKey = "accessToken"
     private let refreshTokenKey = "refreshToken"
@@ -40,7 +40,7 @@ class GoogleCalendarService: NSObject, CalendarService {
         }
     }
 
-    // MARK: - Auth Flow
+    // MARK: - Flusso di Autenticazione
 
     func startDeviceAuth() async throws -> DeviceAuthInfo {
         guard let url = URL(string: deviceAuthEndpoint) else { throw URLError(.badURL) }
@@ -49,7 +49,7 @@ class GoogleCalendarService: NSObject, CalendarService {
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
-        // Unreserved characters for x-www-form-urlencoded
+        // Caratteri non riservati per x-www-form-urlencoded
         var charSet = CharacterSet.alphanumerics
         charSet.insert(charactersIn: "-._~")
 
@@ -137,7 +137,7 @@ class GoogleCalendarService: NSObject, CalendarService {
                         refreshToken, service: keychainService, account: refreshTokenKey)
                 }
 
-                // Allow Keychain to sync
+                // Consenti sincronizzazione Keychain
                 try? await Task.sleep(nanoseconds: 200_000_000)
 
                 await MainActor.run { self.isConnected = true }
@@ -194,7 +194,7 @@ class GoogleCalendarService: NSObject, CalendarService {
         DispatchQueue.main.async { self.isConnected = false }
     }
 
-    // MARK: - Fetching
+    // MARK: - Recupero
 
     func fetchAvailableCalendars() async throws -> [CalendarInfo] {
         guard

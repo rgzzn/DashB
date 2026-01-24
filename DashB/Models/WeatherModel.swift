@@ -14,7 +14,7 @@ import WeatherKit
 struct Forecast: Identifiable {
     let id = UUID()
     let time: String
-    let icon: String  // SF Symbol
+    let icon: String  // Simbolo SF
     let temp: String
 }
 
@@ -64,7 +64,7 @@ class WeatherModel: NSObject, ObservableObject {
         super.init()
         locationManager.delegate = self
         #if os(tvOS)
-            // On tvOS there is no user location; default to manual city if not set by the user
+            // Su tvOS non c'è posizione utente; predefinito a città manuale se non impostato dall'utente
             if UserDefaults.standard.object(forKey: Self.useManualCityDefaultsKey) == nil {
                 self.useManualCity = true
             }
@@ -73,20 +73,20 @@ class WeatherModel: NSObject, ObservableObject {
             }
         #endif
         requestLocationIfNeeded()
-        // Determine initial city name logic during first refresh
+        // Determina la logica del nome città iniziale durante il primo aggiornamento
         startTimer()
         Task { await self.refresh() }
     }
 
     func startTimer() {
-        // Update every 15 minutes
+        // Aggiorna ogni 15 minuti
         timer = Timer.scheduledTimer(withTimeInterval: 900, repeats: true) { [weak self] _ in
             Task { await self?.refresh() }
         }
     }
 
     func refresh() async {
-        // Case 1: Manual City
+        // Caso 1: Città Manuale
         if useManualCity {
             let cityQuery = selectedCity.trimmingCharacters(in: .whitespacesAndNewlines)
             #if os(tvOS)
@@ -95,13 +95,13 @@ class WeatherModel: NSObject, ObservableObject {
                         self.cityName = name
                         await fetchWeather(for: location)
                     } else {
-                        // Fallback to default coordinates on tvOS if geocoding fails
+                        // Ripiego su coordinate predefinite su tvOS se la geocodifica fallisce
                         let fallback = CLLocation(latitude: 45.4642, longitude: 9.1900)
                         self.cityName = defaultCity
                         await fetchWeather(for: fallback)
                     }
                 } else {
-                    // No city typed: use default
+                    // Nessuna città digitata: usa predefinito
                     let fallback = CLLocation(latitude: 45.4642, longitude: 9.1900)
                     self.cityName = defaultCity
                     await fetchWeather(for: fallback)
@@ -109,23 +109,23 @@ class WeatherModel: NSObject, ObservableObject {
                 return
             #endif
             if !cityQuery.isEmpty {
-                // Try to geocode to get coordinates AND pretty name
+                // Prova a geocodificare per ottenere coordinate E bel nome
                 if let (location, name) = await geocodeCityName(cityQuery) {
-                    self.cityName = name  // e.g. "Milano" from geocoder
+                    self.cityName = name  // es. "Milano" dal geocoder
                     await fetchWeather(for: location)
                 }
             }
             return
         }
 
-        // Case 2: Auto / GPS
+        // Caso 2: Auto / GPS
         #if os(tvOS)
-            // tvOS does not provide CoreLocation; fallback to a default city
+            // tvOS non fornisce CoreLocation; ripiego su una città predefinita
             await fetchDefaultCityWeather()
             return
         #endif
 
-        // Check permissions first
+        // Controlla prima i permessi
         switch locationManager.authorizationStatus {
         case .denied, .restricted:
             self.cityName = "Permessi Geoloc. Negati"
@@ -136,7 +136,7 @@ class WeatherModel: NSObject, ObservableObject {
                 await fetchDefaultCityWeather()
                 return
             #else
-                // Waiting for user...
+                // In attesa dell'utente...
                 self.cityName = "In attesa di permessi..."
                 locationManager.requestWhenInUseAuthorization()
                 return
@@ -151,7 +151,7 @@ class WeatherModel: NSObject, ObservableObject {
             return
         }
 
-        // Reverse geocode to show city name for GPS location
+        // Geocodifica inversa per mostrare il nome della città per la posizione GPS
         if let name = await reverseGeocodeLocation(location) {
             self.cityName = name
         } else {
@@ -209,12 +209,12 @@ class WeatherModel: NSObject, ObservableObject {
         }
     }
 
-    // Returns (Location, FormattedName)
+    // Restituisce (Posizione, NomeFormattato)
     private func geocodeCityName(_ name: String) async -> (CLLocation, String)? {
         await withCheckedContinuation { continuation in
             geocoder.geocodeAddressString(name) { placemarks, error in
                 if let placemark = placemarks?.first, let location = placemark.location {
-                    // Use locality (City) or name, fallback to user input
+                    // Usa località (Città) o nome, ripiego su input utente
                     let resolvedName = placemark.locality ?? placemark.name ?? name
                     continuation.resume(returning: (location, resolvedName))
                 } else {
@@ -232,9 +232,9 @@ class WeatherModel: NSObject, ObservableObject {
         }
     }
 
-    // MARK: - Weather
+    // MARK: - Meteo
     private func fetchWeather(for location: CLLocation) async {
-        // Sanitize location: create a clean object with just coords to avoid any geocoder metadata issues
+        // Sanitizza posizione: crea un oggetto pulito con solo coordinate per evitare problemi di metadati geocoder
         let cleanLocation = CLLocation(
             latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
         let previousCityName = self.cityName
@@ -244,13 +244,13 @@ class WeatherModel: NSObject, ObservableObject {
                 let (current, hourly, daily) = try await weatherService.weather(
                     for: cleanLocation, including: .current, .hourly, .daily)
 
-                // Current conditions
+                // Condizioni attuali
                 let tempC = current.temperature.converted(to: .celsius).value
                 self.currentTemp = String(format: "%.0f°", tempC)
                 self.conditionIcon = sfSymbol(for: current.symbolName)
                 self.conditionDescription = self.descriptionForCondition(current.condition)
 
-                // Hourly forecast (next 4 entries)
+                // Previsioni orarie (prossime 4 voci)
                 var items: [Forecast] = []
                 let dateFormatter = DateFormatter()
                 dateFormatter.locale = Locale(identifier: "it_IT")
@@ -271,7 +271,7 @@ class WeatherModel: NSObject, ObservableObject {
                 }
                 self.hourlyForecast = items
 
-                // Daily forecast (next 5 days)
+                // Previsioni giornaliere (prossimi 5 giorni)
                 var dailyItems: [DailyForecast] = []
                 let dayFormatter = DateFormatter()
                 dayFormatter.locale = Locale(identifier: "it_IT")
@@ -347,9 +347,9 @@ class WeatherModel: NSObject, ObservableObject {
 
             let errString = error.localizedDescription
 
-            // Check for common error signatures
+            // Controlla firme di errore comuni
             if let weatherError = error as? WeatherError {
-                // WeatherError does not expose missingPermissions/unauthorized cases. Show a generic message with the error.
+                // WeatherError non espone casi missingPermissions/unauthorized. Mostra un messaggio generico con l'errore.
                 self.cityName = "Err WeatherKit: \(weatherError)"
             } else if errString.localizedCaseInsensitiveContains("WeatherDaemon")
                 || errString.localizedCaseInsensitiveContains("connection")
@@ -363,20 +363,20 @@ class WeatherModel: NSObject, ObservableObject {
                     self.cityName = "Err Rete: \(urlError.localizedDescription)"
                 }
             } else {
-                // Fallback
+                // Ripiego
                 self.cityName = errString
             }
             #if targetEnvironment(simulator)
-                // In Simulator, always show mock data if WeatherKit fails
+                // Nel Simulatore, mostra sempre dati finti se WeatherKit fallisce
                 self.applyMockWeather()
             #endif
             #if os(tvOS)
-                // On tvOS, fallback to Open-Meteo if WeatherKit fails so we still show real data
+                // Su tvOS, ripiego su Open-Meteo se WeatherKit fallisce per mostrare comunque dati reali
                 await fetchWeatherFromOpenMeteo(for: cleanLocation)
                 if self.cityName.hasPrefix("Err")
                     || self.cityName.localizedCaseInsensitiveContains("Capab")
                 {
-                    // Keep previous city label if we had set an error
+                    // Mantieni etichetta città precedente se avevamo impostato un errore
                     self.cityName = previousCityName
                 }
             #endif
@@ -384,7 +384,7 @@ class WeatherModel: NSObject, ObservableObject {
     }
 
     private func sfSymbol(for symbolName: String) -> String {
-        // WeatherKit already returns an SF Symbol compatible name; fall back to a default if empty
+        // WeatherKit restituisce già un nome compatibile con SF Symbol; ripiego su predefinito se vuoto
         return symbolName.isEmpty ? "cloud.fill" : symbolName
     }
 
@@ -452,29 +452,29 @@ class WeatherModel: NSObject, ObservableObject {
         }
     #endif
 
-    // MARK: - Open-Meteo fallback (tvOS)
+    // MARK: - Ripiego Open-Meteo (tvOS)
     private func sfSymbolFromWeatherCode(_ code: Int, isDay: Int = 1) -> String {
         switch code {
         case 0:
-            return isDay == 1 ? "sun.max.fill" : "moon.stars.fill"  // Clear sky
+            return isDay == 1 ? "sun.max.fill" : "moon.stars.fill"  // Cielo sereno
         case 1, 2:
-            return isDay == 1 ? "cloud.sun.fill" : "cloud.moon.fill"  // Mainly clear/partly cloudy
+            return isDay == 1 ? "cloud.sun.fill" : "cloud.moon.fill"  // Prevalentemente sereno/parzialmente nuvoloso
         case 3:
-            return "cloud.fill"  // Overcast
+            return "cloud.fill"  // Coperto
         case 45, 48:
-            return "cloud.fog.fill"  // Fog
+            return "cloud.fog.fill"  // Nebbia
         case 51, 53, 55, 56, 57:
-            return "cloud.drizzle.fill"  // Drizzle
+            return "cloud.drizzle.fill"  // Pioviggine
         case 61, 63, 65, 66, 67:
-            return "cloud.rain.fill"  // Rain
+            return "cloud.rain.fill"  // Pioggia
         case 71, 73, 75, 77:
-            return "cloud.snow.fill"  // Snow
+            return "cloud.snow.fill"  // Neve
         case 80, 81, 82:
-            return "cloud.heavyrain.fill"  // Rain showers
+            return "cloud.heavyrain.fill"  // Rovesci di pioggia
         case 85, 86:
-            return "cloud.snow.fill"  // Snow showers
+            return "cloud.snow.fill"  // Rovesci di neve
         case 95, 96, 99:
-            return "cloud.bolt.rain.fill"  // Thunderstorm
+            return "cloud.bolt.rain.fill"  // Temporale
         default:
             return "cloud.fill"
         }
@@ -581,7 +581,7 @@ class WeatherModel: NSObject, ObservableObject {
             }
 
             if let hourly = decoded.hourly {
-                // Open-Meteo returns time in "yyyy-MM-ddTHH:mm" format (ISO8601-like but simple)
+                // Open-Meteo restituisce l'ora nel formato "yyyy-MM-ddTHH:mm" (tipo ISO8601 ma semplice)
                 let isoFormatter = DateFormatter()
                 isoFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
                 isoFormatter.locale = Locale(identifier: "en_US_POSIX")
@@ -589,9 +589,9 @@ class WeatherModel: NSObject, ObservableObject {
                 let now = Date()
                 var startIndex = 0
                 for (idx, ts) in hourly.time.enumerated() {
-                    // Try to find the first time slot that is >= now (or close to it)
+                    // Prova a trovare il primo slot temporale che è >= adesso (o vicino)
                     if let d = isoFormatter.date(from: ts), d >= now.addingTimeInterval(-1800) {
-                        // Allow 30 mins buffer so we don't skip current hour just because we are at xx:01
+                        // Consenti buffer di 30 min per non saltare l'ora corrente solo perché siamo a xx:01
                         startIndex = idx
                         break
                     }
@@ -635,7 +635,7 @@ class WeatherModel: NSObject, ObservableObject {
                 outDf.dateFormat = "EEE"
 
                 let count = daily.time.count
-                // Start from index 1 (tomorrow) to skip today, take up to 5 days
+                // Inizia dall'indice 1 (domani) per saltare oggi, prendi fino a 5 giorni
                 let startIndex = 1
                 let endIndex = min(startIndex + 5, count)
 
@@ -660,7 +660,7 @@ class WeatherModel: NSObject, ObservableObject {
         }
     }
 
-    // MARK: - Location continuation
+    // MARK: - Continuazione posizione
     private var locationRequestContinuations: [CheckedContinuation<CLLocation?, Never>] = []
 
     deinit {

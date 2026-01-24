@@ -2,11 +2,11 @@
 //  ContentView.swift
 //  DashB
 //
-//  Created by Luca Ragazzini on 20/01/26.
+//  Creato da Luca Ragazzini il 20/01/26.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ContentView: View {
     var body: some View {

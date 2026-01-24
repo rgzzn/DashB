@@ -46,7 +46,7 @@ class RSSModel: ObservableObject {
     }
 
     func startTimer() {
-        // Update feed every 15 minutes
+        // Aggiorna il feed ogni 15 minuti
         timer = Timer.scheduledTimer(withTimeInterval: 900, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.fetchNews()
@@ -70,14 +70,14 @@ class RSSModel: ObservableObject {
                 }
             }
 
-            // Sort by rawDate (most recent first)
+            // Ordina per rawDate (più recenti prima)
             let sortedItems = allItems.sorted { (item1, item2) -> Bool in
                 let date1 = item1.rawDate ?? .distantPast
                 let date2 = item2.rawDate ?? .distantPast
                 return date1 > date2
             }
 
-            self.newsItems = Array(sortedItems.prefix(50))  // Keep top 50 items
+            self.newsItems = Array(sortedItems.prefix(50))  // Mantieni i primi 50 elementi
             self.enrichNewsItemsWithImages()
         }
     }
@@ -99,7 +99,7 @@ class RSSModel: ObservableObject {
     }
 
     private func enrichNewsItemsWithImages() {
-        // Only enrich the first 12 items to save resources
+        // Arricchisci solo i primi 12 elementi per risparmiare risorse
         let itemsToFetch = newsItems.prefix(12)
 
         for item in itemsToFetch {
@@ -116,7 +116,7 @@ class RSSModel: ObservableObject {
                         }
                     }
                 } catch {
-                    // Ignore image fetch errors
+                    // Ignora errori di recupero immagine
                 }
             }
         }
@@ -140,7 +140,7 @@ class RSSModel: ObservableObject {
     }
 }
 
-// Separate non-isolated parser to satisfy Swift 6 concurrency rules
+// Parser non isolato separato per soddisfare le regole di concorrenza di Swift 6
 class RSSParser: NSObject, XMLParserDelegate {
     private var tempItems: [NewsItem] = []
     private var currentElement = ""

@@ -38,10 +38,10 @@ struct NewsTickerView: View {
             if !model.newsItems.isEmpty {
                 let item = model.newsItems[currentIndex % model.newsItems.count]
 
-                // Background
+                // Sfondo
                 GeometryReader { geo in
                     ZStack(alignment: .bottomLeading) {
-                        // Background Image or Gradient
+                        // Immagine di sfondo o gradiente
                         if let imageUrl = item.imageUrl, let url = URL(string: imageUrl) {
                             AsyncImage(url: url) { phase in
                                 switch phase {
@@ -61,12 +61,12 @@ struct NewsTickerView: View {
                             fallbackBackground
                         }
 
-                        // Gradient Overlay for text readability
+                        // Sovrapposizione gradiente per leggibilità testo
                         LinearGradient(
                             gradient: Gradient(colors: [.black.opacity(0.9), .transparent]),
                             startPoint: .bottom, endPoint: .top)
 
-                        // Content
+                        // Contenuto
                         HStack(alignment: .bottom) {
                             VStack(alignment: .leading, spacing: 12) {
 
@@ -97,7 +97,7 @@ struct NewsTickerView: View {
                                         .font(.caption)
                                         .foregroundColor(.white.opacity(0.6))
                                     Spacer()
-                                    // Pagination dots
+                                    // Punti di paginazione
                                     HStack(spacing: 6) {
                                         let pageCount = min(model.newsItems.count, 5)
                                         ForEach(0..<pageCount, id: \.self) {
@@ -116,7 +116,7 @@ struct NewsTickerView: View {
 
                             Spacer()
 
-                            // QR Code
+                            // Codice QR
                             if let qrCGImage = qrGenerator.generateQRCode(from: item.link) {
                                 Image(decorative: qrCGImage, scale: 1.0)
                                     .resizable()
@@ -133,9 +133,9 @@ struct NewsTickerView: View {
                     }
                 }
                 .transition(.opacity.animation(.easeInOut))
-                .id(item.id)  // Force redraw/transition on change
+                .id(item.id)  // Forza ridisegno/transizione al cambio
             } else {
-                // Loading / Empty State
+                // Caricamento / Stato Vuoto
                 ZStack {
                     Color.black.opacity(0.3)
                     ProgressView("Caricamento notizie...")
