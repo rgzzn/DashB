@@ -12,12 +12,14 @@ import SwiftUI
 struct DashBApp: App {
     @StateObject private var weatherModel = WeatherModel()
     @StateObject private var calendarManager = CalendarManager()
+    @StateObject private var rssModel = RSSModel()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(weatherModel)
                 .environmentObject(calendarManager)
+                .environmentObject(rssModel)
         }
     }
 }

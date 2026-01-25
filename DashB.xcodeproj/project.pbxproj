@@ -7,11 +7,11 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		0D3FCF8C2F201170006849CE /* DashB.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DashB.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0D8E6D772F263BD300F0363F /* DashB.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DashB.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		0D3FCF8E2F201170006849CE /* DashB */ = {
+		0D8E6D792F263BD300F0363F /* DashB */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = DashB;
 			sourceTree = "<group>";
@@ -19,7 +19,7 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		0D3FCF892F201170006849CE /* Frameworks */ = {
+		0D8E6D742F263BD300F0363F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -29,18 +29,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		0D3FCF832F201170006849CE = {
+		0D8E6D6E2F263BD300F0363F = {
 			isa = PBXGroup;
 			children = (
-				0D3FCF8E2F201170006849CE /* DashB */,
-				0D3FCF8D2F201170006849CE /* Products */,
+				0D8E6D792F263BD300F0363F /* DashB */,
+				0D8E6D782F263BD300F0363F /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		0D3FCF8D2F201170006849CE /* Products */ = {
+		0D8E6D782F263BD300F0363F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				0D3FCF8C2F201170006849CE /* DashB.app */,
+				0D8E6D772F263BD300F0363F /* DashB.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,64 +48,64 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		0D3FCF8B2F201170006849CE /* DashB */ = {
+		0D8E6D762F263BD300F0363F /* DashB */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 0D3FCF992F201171006849CE /* Build configuration list for PBXNativeTarget "DashB" */;
+			buildConfigurationList = 0D8E6D842F263BD400F0363F /* Build configuration list for PBXNativeTarget "DashB" */;
 			buildPhases = (
-				0D3FCF882F201170006849CE /* Sources */,
-				0D3FCF892F201170006849CE /* Frameworks */,
-				0D3FCF8A2F201170006849CE /* Resources */,
+				0D8E6D732F263BD300F0363F /* Sources */,
+				0D8E6D742F263BD300F0363F /* Frameworks */,
+				0D8E6D752F263BD300F0363F /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				0D3FCF8E2F201170006849CE /* DashB */,
+				0D8E6D792F263BD300F0363F /* DashB */,
 			);
 			name = DashB;
 			packageProductDependencies = (
 			);
 			productName = DashB;
-			productReference = 0D3FCF8C2F201170006849CE /* DashB.app */;
+			productReference = 0D8E6D772F263BD300F0363F /* DashB.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		0D3FCF842F201170006849CE /* Project object */ = {
+		0D8E6D6F2F263BD300F0363F /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
-					0D3FCF8B2F201170006849CE = {
+					0D8E6D762F263BD300F0363F = {
 						CreatedOnToolsVersion = 26.2;
 					};
 				};
 			};
-			buildConfigurationList = 0D3FCF872F201170006849CE /* Build configuration list for PBXProject "DashB" */;
-			developmentRegion = it;
+			buildConfigurationList = 0D8E6D722F263BD300F0363F /* Build configuration list for PBXProject "DashB" */;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				en,
 				Base,
-				it,
 			);
-			mainGroup = 0D3FCF832F201170006849CE;
+			mainGroup = 0D8E6D6E2F263BD300F0363F;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 0D3FCF8D2F201170006849CE /* Products */;
+			productRefGroup = 0D8E6D782F263BD300F0363F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				0D3FCF8B2F201170006849CE /* DashB */,
+				0D8E6D762F263BD300F0363F /* DashB */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		0D3FCF8A2F201170006849CE /* Resources */ = {
+		0D8E6D752F263BD300F0363F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -115,7 +115,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		0D3FCF882F201170006849CE /* Sources */ = {
+		0D8E6D732F263BD300F0363F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -125,7 +125,7 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		0D3FCF972F201171006849CE /* Debug */ = {
+		0D8E6D822F263BD400F0363F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -189,7 +189,7 @@
 			};
 			name = Debug;
 		};
-		0D3FCF982F201171006849CE /* Release */ = {
+		0D8E6D832F263BD400F0363F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -246,21 +246,16 @@
 			};
 			name = Release;
 		};
-		0D3FCF9A2F201171006849CE /* Debug */ = {
+		0D8E6D852F263BD400F0363F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = DashB/DashB.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = HPN3692X55;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = DashB;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "DashB usa la tua posizione per il meteo locale.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "DashB usa la tua posizione per il meteo locale.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -277,25 +272,19 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Debug;
 		};
-		0D3FCF9B2F201171006849CE /* Release */ = {
+		0D8E6D862F263BD400F0363F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = DashB/DashB.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = HPN3692X55;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = DashB;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "DashB usa la tua posizione per il meteo locale.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "DashB usa la tua posizione per il meteo locale.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -312,32 +301,31 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0D3FCF872F201170006849CE /* Build configuration list for PBXProject "DashB" */ = {
+		0D8E6D722F263BD300F0363F /* Build configuration list for PBXProject "DashB" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				0D3FCF972F201171006849CE /* Debug */,
-				0D3FCF982F201171006849CE /* Release */,
+				0D8E6D822F263BD400F0363F /* Debug */,
+				0D8E6D832F263BD400F0363F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		0D3FCF992F201171006849CE /* Build configuration list for PBXNativeTarget "DashB" */ = {
+		0D8E6D842F263BD400F0363F /* Build configuration list for PBXNativeTarget "DashB" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				0D3FCF9A2F201171006849CE /* Debug */,
-				0D3FCF9B2F201171006849CE /* Release */,
+				0D8E6D852F263BD400F0363F /* Debug */,
+				0D8E6D862F263BD400F0363F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 0D3FCF842F201170006849CE /* Project object */;
+	rootObject = 0D8E6D6F2F263BD300F0363F /* Project object */;
 }

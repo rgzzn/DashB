@@ -1,11 +1,12 @@
 {
   "images" : [
     {
-      "filename" : "DASHB_400x240.png",
+      "filename" : "DashB-BACK.png",
       "idiom" : "tv",
       "scale" : "1x"
     },
     {
+      "filename" : "DashB-BACK 1.png",
       "idiom" : "tv",
       "scale" : "2x"
     }

@@ -28,7 +28,7 @@ struct QRCodeGenerator {
 }
 
 struct NewsTickerView: View {
-    @StateObject private var model = RSSModel()
+    @EnvironmentObject private var model: RSSModel
     @State private var currentIndex: Int = 0
     private let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
     private let qrGenerator = QRCodeGenerator()

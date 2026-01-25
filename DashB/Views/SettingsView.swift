@@ -2,7 +2,7 @@
 //  SettingsView.swift
 //  DashB
 //
-//  Created by Luca Ragazzini on 20/01/26.
+//  Created by Luca Ragazzini on 24/01/26.
 //
 
 import SwiftUI
@@ -10,492 +10,477 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var weatherModel: WeatherModel
     @EnvironmentObject var calendarManager: CalendarManager
+    @EnvironmentObject var rssModel: RSSModel
     @Environment(\.dismiss) private var dismiss
 
-    // Stato di navigazione
-    enum SettingsCategory: String, CaseIterable, Identifiable {
-        case profile = "Profilo"
-        case weather = "Meteo"
-        case accounts = "Account"
+    // Navigation State
+    @State private var navigationPath = NavigationPath()
 
-        var id: String { self.rawValue }
-        var icon: String {
-            switch self {
-            case .profile: return "person.crop.circle"
-            case .weather: return "cloud.sun.fill"
-            case .accounts: return "key.fill"
-            }
-        }
-    }
-
-    @State private var selectedCategory: SettingsCategory = .profile
-    @FocusState private var focusedArea: FocusedArea?
-
-    enum FocusedArea: Hashable {
-        case sidebar(SettingsCategory)
-        case content
-        case closeButton
-    }
-
-    // Stato auth
+    // Auth State
     @State private var authServiceItem: AuthServiceItem?
     struct AuthServiceItem: Identifiable {
         let service: any CalendarService
         var id: String { service.serviceName }
     }
 
-    // Personalizzazione Utente
+    // User Preferences
     @AppStorage("userName") private var userName = "Luca"
-    @AppStorage("showUserName") private var showUserName = true
+    @AppStorage("showGreeting") private var showGreeting = true
+    @AppStorage("weatherCity") private var weatherCity = "Milano"
 
-    @State private var tempUserName: String = ""
+    // Temp State for Edit
+    @State private var showingEditProfile = false
+    @State private var tempUserName = ""
+
+    @State private var showingEditWeather = false
+    @State private var tempCity = ""
+
+    var body: some View {
+        NavigationStack(path: $navigationPath) {
+            ZStack {
+                GradientBackgroundView().ignoresSafeArea()
+
+                VStack(alignment: .leading, spacing: 30) {
+                    // Header
+                    HStack {
+                        Text("Impostazioni")
+                            .font(.system(size: 48, weight: .bold))
+                            .foregroundColor(.white)
+
+                        Spacer()
+
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 36))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 40)
+                    .padding(.top, 40)
+
+                    ScrollView {
+                        VStack(spacing: 30) {
+                            // Quick Actions Row
+                            HStack(spacing: 20) {
+                                QuickActionButton(icon: "location.fill", title: "Cambia Città") {
+                                    tempCity = weatherCity
+                                    showingEditWeather = true
+                                }
+
+                                QuickActionButton(
+                                    icon: "person.crop.circle.badge.plus", title: "Collega Account"
+                                ) {
+                                    // Default to Google for quick action, or show sheet
+                                    authServiceItem = AuthServiceItem(
+                                        service: calendarManager.googleService)
+                                }
+
+                                QuickActionButton(
+                                    icon: "arrow.triangle.2.circlepath", title: "Aggiorna RSS"
+                                ) {
+                                    rssModel.fetchNews()
+                                }
+                            }
+                            .padding(.horizontal, 40)
+
+                            // Bento Grid
+                            LazyVGrid(
+                                columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 40
+                            ) {
+                                // 1. Profilo & Display
+                                SettingsCard(
+                                    icon: "person.fill",
+                                    title: "Profilo",
+                                    color: .blue
+                                ) {
+                                    tempUserName = userName
+                                    showingEditProfile = true
+                                } content: {
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        Text("Ciao, \(userName)")
+                                            .font(.headline)
+                                            .fontWeight(.bold)
+                                        Text(showGreeting ? "Saluto attivo" : "Saluto nascosto")
+                                            .font(.caption)
+                                            .opacity(0.7)
+                                    }
+                                }
+
+                                // 2. Meteo
+                                SettingsCard(
+                                    icon: "cloud.sun.fill",
+                                    title: "Meteo",
+                                    color: .orange
+                                ) {
+                                    tempCity = weatherCity
+                                    showingEditWeather = true
+                                } content: {
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        Text(weatherCity)
+                                            .font(.headline)
+                                            .fontWeight(.bold)
+                                        Text("Città attuale")
+                                            .font(.caption)
+                                            .opacity(0.7)
+                                    }
+                                }
+
+                                // 3. Agenda (Accounts)
+                                SettingsCard(
+                                    icon: "calendar",
+                                    title: "Agenda",
+                                    color: .red
+                                ) {
+                                    navigationPath.append(SettingsDestination.agenda)
+                                } content: {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        HStack {
+                                            Circle().fill(
+                                                calendarManager.googleService.isConnected
+                                                    ? Color.green : Color.red
+                                            ).frame(width: 8, height: 8)
+                                            Text("Google")
+                                        }
+                                        HStack {
+                                            Circle().fill(
+                                                calendarManager.outlookService.isConnected
+                                                    ? Color.green : Color.red
+                                            ).frame(width: 8, height: 8)
+                                            Text("Outlook")
+                                        }
+                                    }
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                }
+
+                                // 4. Notizie
+                                SettingsCard(
+                                    icon: "newspaper.fill",
+                                    title: "Notizie",
+                                    color: .purple
+                                ) {
+                                    navigationPath.append(SettingsDestination.news)
+                                } content: {
+                                    Text("\(rssModel.feeds.count) fonti")
+                                        .font(.headline)
+                                        .fontWeight(.bold)
+                                }
+                            }
+                            .padding(.horizontal, 40)
+                            .padding(.bottom, 60)
+                        }
+                    }
+                }
+            }
+            .navigationDestination(for: SettingsDestination.self) { dest in
+                switch dest {
+                case .agenda:
+                    AccountsSettingsView()
+                        .environmentObject(calendarManager)
+                        .environmentObject(rssModel)  // Pass through environment if needed
+                case .news:
+                    NewsSettingsView()
+                }
+            }
+            .sheet(isPresented: $showingEditProfile) {
+                EditProfileSheet(
+                    userName: $userName, showGreeting: $showGreeting,
+                    isPresented: $showingEditProfile)
+            }
+            .sheet(isPresented: $showingEditWeather) {
+                EditWeatherSheet(city: $weatherCity, isPresented: $showingEditWeather)
+                    .environmentObject(weatherModel)
+            }
+            .sheet(item: $authServiceItem) { item in
+                DeviceLoginView(service: item.service)
+                    .environmentObject(calendarManager)
+            }
+        }
+    }
+}
+
+enum SettingsDestination: Hashable {
+    case agenda
+    case news
+}
+
+// MARK: - Subviews & Components
+
+// MARK: - Subviews & Components
+
+struct QuickActionButton: View {
+    let icon: String
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.headline)
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.bold)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color.white.opacity(0.1))
+            .cornerRadius(12)
+        }
+        #if os(tvOS)
+            .buttonStyle(.card)
+        #else
+            .buttonStyle(.plain)
+        #endif
+    }
+}
+
+struct SettingsCard<Content: View>: View {
+    let icon: String
+    let title: String
+    let color: Color
+    let action: () -> Void
+    let content: () -> Content
+
+    init(
+        icon: String, title: String, color: Color, action: @escaping () -> Void,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.icon = icon
+        self.title = title
+        self.color = color
+        self.action = action
+        self.content = content
+    }
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Image(systemName: icon)
+                        .font(.title3)
+                        .foregroundColor(color)
+                        .padding(6)
+                        .background(color.opacity(0.2))
+                        .clipShape(Circle())
+
+                    Text(title)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white.opacity(0.9))
+                }
+
+                Divider().background(Color.white.opacity(0.1))
+
+                content()
+                    .foregroundColor(.white.opacity(0.8))
+            }
+            .padding(15)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 180)
+            .background(Color.white.opacity(0.05))
+            .cornerRadius(15)
+        }
+        #if os(tvOS)
+            .buttonStyle(.card)
+        #else
+            .buttonStyle(.plain)
+        #endif
+    }
+}
+
+// MARK: - Edit Sheets
+
+struct EditProfileSheet: View {
+    @Binding var userName: String
+    @Binding var showGreeting: Bool
+    @Binding var isPresented: Bool
+    @State private var tempName: String = ""
+
+    var body: some View {
+        VStack(spacing: 30) {
+            Text("Modifica Profilo")
+                .font(.title)
+                .fontWeight(.bold)
+
+            TextField("Il tuo nome", text: $tempName)
+                .textFieldStyle(PlainTextFieldStyle())
+                .padding()
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(12)
+
+            Toggle("Mostra Saluto", isOn: $showGreeting)
+                #if os(iOS) || os(macOS) || os(watchOS) || os(visionOS)
+                    .tint(.blue)
+                #else
+                    .toggleStyle(SwitchToggleStyle())
+                #endif
+
+            Button("Salva") {
+                userName = tempName
+                isPresented = false
+            }
+            .buttonStyle(PremiumButtonStyle())
+        }
+        .padding(50)
+        .onAppear { tempName = userName }
+    }
+}
+
+struct EditWeatherSheet: View {
+    @Binding var city: String
+    @Binding var isPresented: Bool
+    @EnvironmentObject var weatherModel: WeatherModel
     @State private var tempCity: String = ""
 
     var body: some View {
-        ZStack {
-            // Sfondo coerente con Dashboard
-            GradientBackgroundView()
-                .ignoresSafeArea()
+        VStack(spacing: 30) {
+            Text("Imposta Meteo")
+                .font(.title)
+                .fontWeight(.bold)
 
-            HStack(spacing: 0) {
-                // MARK: - Barra laterale
-                VStack(alignment: .leading, spacing: 15) {
-                    Text("Impostazioni")
-                        .font(.system(size: 44, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(.bottom, 30)
+            TextField("Città (es. Roma)", text: $tempCity)
+                .textFieldStyle(PlainTextFieldStyle())
+                .padding()
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(12)
 
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(SettingsCategory.allCases) { category in
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedCategory = category
-                                }
-                            } label: {
-                                HStack(spacing: 15) {
-                                    Image(systemName: category.icon)
-                                        .font(.title3)
-                                    Text(category.rawValue)
-                                        .font(.headline)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .buttonStyle(PremiumButtonStyle())
-                            .focused($focusedArea, equals: .sidebar(category))
-                        }
-                    }
-
-                    Spacer()
-
-                    Button {
-                        applyAndDismiss()
-                    } label: {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                            Text("Salva e Chiudi")
-                        }
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(PremiumButtonStyle())
-                    .focused($focusedArea, equals: .closeButton)
-                }
-                .padding(50)
-                .frame(width: 400)
-                .background(Color.black.opacity(0.2))
-
-                // MARK: - Area Contenuto Principale
-                VStack(alignment: .leading, spacing: 0) {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 35) {
-                            headerView(for: selectedCategory)
-
-                            VStack(alignment: .leading, spacing: 25) {
-                                categoryContent(for: selectedCategory)
-                            }
-                        }
-                        .padding(.vertical, 60)
-                        .padding(.horizontal, 80)
+            Button("Usa Posizione Attuale") {
+                weatherModel.useCurrentLocation()
+                Task {
+                    // Small delay to allow location update
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    await MainActor.run {
+                        tempCity = weatherModel.selectedCity
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.ultraThinMaterial)
-                .environment(\.colorScheme, .dark)
             }
-        }
-        .onAppear {
-            tempCity = weatherModel.selectedCity.isEmpty ? "Milano" : weatherModel.selectedCity
-            tempUserName = userName
-            focusedArea = .sidebar(.profile)
-        }
-        .sheet(item: $authServiceItem) { item in
-            DeviceLoginView(service: item.service)
-                .environmentObject(calendarManager)
-        }
-    }
 
-    @ViewBuilder
-    private func headerView(for category: SettingsCategory) -> some View {
-        HStack(spacing: 15) {
-            Image(systemName: category.icon)
-                .font(.system(size: 32))
-                .foregroundColor(.white.opacity(0.8))
-            Text(category.rawValue)
-                .font(.system(size: 38, weight: .semibold))
-                .foregroundColor(.white)
+            Button("Salva") {
+                city = tempCity
+                weatherModel.updateCity(tempCity)
+                isPresented = false
+            }
+            .buttonStyle(PremiumButtonStyle())
         }
+        .padding(50)
+        .onAppear { tempCity = city }
     }
+}
 
+// MARK: - Agenda / Accounts View (Extracted)
+
+struct AccountsSettingsView: View {
+    @EnvironmentObject var calendarManager: CalendarManager
+    @Environment(\.dismiss) private var dismiss
+
+    // Auth State for this view
+    @State private var authServiceItem: SettingsView.AuthServiceItem?
     @State private var showingCalendarSelection: CalendarType?
+
     enum CalendarType: Identifiable {
         case google, outlook
         var id: Int { self.hashValue }
     }
 
-    @ViewBuilder
-    private func categoryContent(for category: SettingsCategory) -> some View {
-        switch category {
-        case .profile:
-            VStack(alignment: .leading, spacing: 30) {
-                Toggle(isOn: $showUserName) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Saluto Personalizzato")
-                            .font(.title3)
-                        Text("Mostra il tuo nome nella dashboard")
-                            .font(.body)
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                }
-                .toggleStyle(.switch)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Il tuo nome")
-                        .font(.headline)
-                        .foregroundColor(.white.opacity(0.7))
-
-                    TextField("Inserisci il tuo nome", text: $tempUserName)
-                        .textFieldStyle(.plain)
-                        .padding(20)
-                        .background(Color.white.opacity(0.08))
-                        .cornerRadius(12)
-                        .font(.title3)
-                }
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Account & Calendari")
+                    .font(.system(size: 38, weight: .bold))
+                Spacer()
+                Button("Chiudi") { dismiss() }
+                    .buttonStyle(PremiumButtonStyle())
             }
+            .padding(40)
+            .background(Color.black.opacity(0.3))
 
-        case .weather:
-            VStack(alignment: .leading, spacing: 30) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Città predefinita")
-                        .font(.headline)
-                        .foregroundColor(.white.opacity(0.7))
-
-                    TextField("Es. Roma, Milano...", text: $tempCity)
-                        .textFieldStyle(.plain)
-                        .padding(20)
-                        .background(Color.white.opacity(0.08))
-                        .cornerRadius(12)
-                        .font(.title3)
-                }
-
-                Button {
-                    weatherModel.useCurrentLocation()
-                    Task { @MainActor in
-                        tempCity = weatherModel.selectedCity
-                    }
-                } label: {
-                    HStack {
-                        Image(systemName: "location.fill")
-                        Text("Usa Posizione Attuale")
-                    }
-                }
-                .buttonStyle(PremiumButtonStyle())
-            }
-
-        case .accounts:
-            VStack(alignment: .leading, spacing: 25) {
-                accountCard(
-                    title: "Google Calendar",
-                    subtitle: "Sincronizza i tuoi eventi Google",
-                    icon: "g.circle.fill",
-                    iconColor: .red,
-                    isConnected: calendarManager.googleService.isConnected,
-                    logoutAction: { calendarManager.googleService.logout() },
-                    manageAction: { showingCalendarSelection = .google },
-                    loginAction: {
-                        authServiceItem = AuthServiceItem(service: calendarManager.googleService)
-                    }
-                )
-
-                accountCard(
-                    title: "Outlook / Microsoft",
-                    subtitle: "Sincronizza i tuoi eventi Microsoft",
-                    icon: "m.circle.fill",
-                    iconColor: .blue,
-                    isConnected: calendarManager.outlookService.isConnected,
-                    logoutAction: { calendarManager.outlookService.logout() },
-                    manageAction: { showingCalendarSelection = .outlook },
-                    loginAction: {
-                        authServiceItem = AuthServiceItem(service: calendarManager.outlookService)
-                    }
-                )
-            }
-            .sheet(item: $showingCalendarSelection) { type in
-                if type == .google {
-                    CalendarSelectionView(
+            ScrollView {
+                VStack(spacing: 30) {
+                    accountRow(
                         service: calendarManager.googleService,
-                        selectedConfigs: Binding(
-                            get: { calendarManager.selectedGoogleCalendars },
-                            set: { calendarManager.selectedGoogleCalendars = $0 }
-                        ))
-                } else {
-                    CalendarSelectionView(
+                        icon: "g.circle.fill",
+                        color: .red,
+                        title: "Google Calendar",
+                        type: .google
+                    )
+
+                    accountRow(
                         service: calendarManager.outlookService,
-                        selectedConfigs: Binding(
-                            get: { calendarManager.selectedOutlookCalendars },
-                            set: { calendarManager.selectedOutlookCalendars = $0 }
-                        ))
+                        icon: "m.circle.fill",
+                        color: .blue,
+                        title: "Outlook Calendar",
+                        type: .outlook
+                    )
                 }
+                .padding(40)
+            }
+        }
+        .background(GradientBackgroundView().ignoresSafeArea())
+        .sheet(item: $authServiceItem) { item in
+            DeviceLoginView(service: item.service)
+                .environmentObject(calendarManager)
+        }
+        .sheet(item: $showingCalendarSelection) { type in
+            if type == .google {
+                CalendarSelectionView(
+                    service: calendarManager.googleService,
+                    selectedConfigs: Binding(
+                        get: { calendarManager.selectedGoogleCalendars },
+                        set: { calendarManager.selectedGoogleCalendars = $0 }
+                    ))
+            } else {
+                CalendarSelectionView(
+                    service: calendarManager.outlookService,
+                    selectedConfigs: Binding(
+                        get: { calendarManager.selectedOutlookCalendars },
+                        set: { calendarManager.selectedOutlookCalendars = $0 }
+                    ))
             }
         }
     }
 
     @ViewBuilder
-    private func accountCard(
-        title: String, subtitle: String, icon: String, iconColor: Color, isConnected: Bool,
-        logoutAction: @escaping () -> Void, manageAction: @escaping () -> Void,
-        loginAction: @escaping () -> Void
+    private func accountRow(
+        service: any CalendarService, icon: String, color: Color, title: String, type: CalendarType
     ) -> some View {
-        HStack {
+        HStack(spacing: 20) {
             Image(systemName: icon)
-                .font(.system(size: 40))
-                .foregroundColor(iconColor)
-                .frame(width: 60)
+                .font(.system(size: 50))
+                .foregroundColor(color)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading) {
                 Text(title)
-                    .font(.title3.bold())
-                Text(isConnected ? "Stato: Connesso" : subtitle)
-                    .font(.body)
-                    .foregroundColor(isConnected ? .green : .white.opacity(0.5))
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Text(service.isConnected ? "Connesso" : "Non connesso")
+                    .foregroundColor(service.isConnected ? .green : .gray)
             }
 
             Spacer()
 
-            if isConnected {
-                HStack(spacing: 25) {
-                    Button(action: manageAction) {
-                        Text("Gestisci")
-                            .lineLimit(1)
-                            .frame(minWidth: 200)
-                    }
-                    .buttonStyle(PremiumButtonStyle())
-
-                    Button(role: .destructive, action: logoutAction) {
-                        Text("Disconnetti")
-                            .lineLimit(1)
-                            .frame(minWidth: 240)
-                    }
-                    .buttonStyle(PremiumButtonStyle(isDestructive: true))
+            if service.isConnected {
+                Button("Gestisci") {
+                    showingCalendarSelection = type
                 }
+                .buttonStyle(PremiumButtonStyle())
+
+                Button("Esci") {
+                    service.logout()
+                }
+                .buttonStyle(PremiumButtonStyle(isDestructive: true))
             } else {
-                Button(action: loginAction) {
-                    Text("Connetti Account")
-                        .lineLimit(1)
-                        .frame(minWidth: 280)
+                Button("Connetti") {
+                    authServiceItem = SettingsView.AuthServiceItem(service: service)
                 }
                 .buttonStyle(PremiumButtonStyle())
             }
         }
         .padding(30)
-        .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(Color.white.opacity(0.06))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
-        )
-    }
-
-    private func applyAndDismiss() {
-        let trimmedCity = tempCity.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedCity.isEmpty {
-            weatherModel.updateCity(trimmedCity)
-        }
-
-        let trimmedName = tempUserName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedName.isEmpty {
-            userName = trimmedName
-        }
-
-        dismiss()
-    }
-}
-
-struct CalendarSelectionView<Service: CalendarService>: View {
-    let service: Service
-    @Binding var selectedConfigs: [CalendarInfo]
-    @Environment(\.dismiss) private var dismiss
-    @State private var availableCalendars: [CalendarInfo] = []
-    @State private var isLoading = true
-    @State private var errorMsg: String?
-
-    let basicColors = [
-        "#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#007AFF", "#5856D6", "#AF52DE",
-        "#FF2D55", "#A2845E", "#8E8E93",
-    ]
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Seleziona Calendari")
-                    .font(.system(size: 38, weight: .bold))
-                Spacer()
-                Button("Fatto") { dismiss() }
-                    .buttonStyle(PremiumButtonStyle())
-            }
-            .padding(50)
-            .background(Color.black.opacity(0.3))
-
-            if isLoading {
-                Spacer()
-                ProgressView("Caricamento calendari...")
-                Spacer()
-            } else if let error = errorMsg {
-                Spacer()
-                Text(error)
-                    .foregroundColor(.red)
-                Button("Riprova") { loadCalendars() }
-                    .buttonStyle(PremiumButtonStyle())
-                Spacer()
-            } else {
-                ScrollView {
-                    VStack(spacing: 20) {
-                        ForEach(availableCalendars) { cal in
-                            let isSelected = selectedConfigs.contains(where: { $0.id == cal.id })
-
-                            VStack(alignment: .leading, spacing: 15) {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(cal.name)
-                                            .font(.headline)
-                                    }
-
-                                    Spacer()
-
-                                    Toggle(
-                                        "",
-                                        isOn: Binding(
-                                            get: { isSelected },
-                                            set: { active in
-                                                if active {
-                                                    if !isSelected {
-                                                        var newCal = cal
-                                                        newCal.colorHex = basicColors[0]
-                                                        selectedConfigs.append(newCal)
-                                                    }
-                                                } else {
-                                                    selectedConfigs.removeAll(where: {
-                                                        $0.id == cal.id
-                                                    })
-                                                }
-                                            }
-                                        )
-                                    )
-                                    .toggleStyle(.switch)
-                                }
-
-                                if isSelected {
-                                    HStack(spacing: 20) {
-                                        ForEach(basicColors, id: \.self) { hex in
-                                            let isCurrent =
-                                                selectedConfigs.first(where: { $0.id == cal.id })?
-                                                .colorHex == hex
-
-                                            Button {
-                                                if let index = selectedConfigs.firstIndex(where: {
-                                                    $0.id == cal.id
-                                                }) {
-                                                    selectedConfigs[index].colorHex = hex
-                                                }
-                                            } label: {
-                                                Circle()
-                                                    .fill(Color(hex: hex))
-                                                    .frame(width: 44, height: 44)
-                                                    .overlay(
-                                                        Circle()
-                                                            .stroke(
-                                                                Color.white,
-                                                                lineWidth: isCurrent ? 4 : 0)
-                                                    )
-                                                    .shadow(radius: isCurrent ? 5 : 0)
-                                            }
-                                            .buttonStyle(ColorButtonStyle())
-                                        }
-                                    }
-                                    .padding(.vertical, 10)
-                                    .padding(.leading, 10)
-                                }
-                            }
-                            .padding(25)
-                            .background(Color.white.opacity(0.05))
-                            .cornerRadius(15)
-                        }
-                    }
-                    .padding(50)
-                }
-            }
-        }
-        .background(GradientBackgroundView().ignoresSafeArea())
-        .onAppear { loadCalendars() }
-    }
-
-    private func loadCalendars() {
-        isLoading = true
-        errorMsg = nil
-        Task {
-            do {
-                let fetched = try await service.fetchAvailableCalendars()
-                await MainActor.run {
-                    self.availableCalendars = fetched
-                    // Attiva automaticamente tutti i calendari per impostazione predefinita se non sono già selezionati
-                    for cal in fetched {
-                        if !selectedConfigs.contains(where: { $0.id == cal.id }) {
-                            var newCal = cal
-                            let index = availableCalendars.firstIndex(where: { $0.id == cal.id }) ?? 0
-                            newCal.colorHex = basicColors[index % basicColors.count]
-                            selectedConfigs.append(newCal)
-                        }
-                    }
-                    isLoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    errorMsg = "Errore: \(error.localizedDescription)"
-                    isLoading = false
-                }
-            }
-        }
-    }
-}
-
-#Preview {
-    SettingsView()
-        .environmentObject(WeatherModel())
-        .environmentObject(CalendarManager())
-}
-
-struct ColorButtonStyle: ButtonStyle {
-    @Environment(\.isFocused) var isFocused
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(isFocused ? 1.3 : 1.0)
-            .shadow(color: .white.opacity(isFocused ? 0.6 : 0), radius: 10)
-            .overlay(
-                Circle()
-                    .stroke(Color.white, lineWidth: isFocused ? 4 : 0)
-                    .padding(-6)
-            )
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isFocused)
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(20)
     }
 }

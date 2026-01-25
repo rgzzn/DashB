@@ -29,7 +29,7 @@ class RSSModel: ObservableObject {
     @Published var newsItems: [NewsItem] = []
 
     private var timer: Timer?
-    private let feeds: [FeedConfig] = [
+    @Published var feeds: [FeedConfig] = [
         FeedConfig(
             url: "https://www.ansa.it/emiliaromagna/notizie/emiliaromagna_rss.xml", source: "ANSA"),
         FeedConfig(url: "https://www.forlitoday.it/rss", source: "ForlìToday"),
@@ -51,6 +51,14 @@ class RSSModel: ObservableObject {
             Task { @MainActor in
                 self?.fetchNews()
             }
+        }
+    }
+
+    func updateFeeds(_ newFeeds: [FeedConfig]) {
+        self.feeds = newFeeds
+        self.newsItems = []  // Clear old items
+        Task { @MainActor in
+            self.fetchNews()
         }
     }
 
