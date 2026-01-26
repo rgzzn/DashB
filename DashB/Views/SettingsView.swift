@@ -317,6 +317,9 @@ struct EditProfileSheet: View {
                 .padding()
                 .background(Color.white.opacity(0.1))
                 .cornerRadius(12)
+                #if os(tvOS)
+                    .focusEffect(.none)
+                #endif
 
             Toggle("Mostra Saluto", isOn: $showGreeting)
                 #if os(iOS) || os(macOS) || os(watchOS) || os(visionOS)
@@ -353,6 +356,9 @@ struct EditWeatherSheet: View {
                 .padding()
                 .background(Color.white.opacity(0.1))
                 .cornerRadius(12)
+                #if os(tvOS)
+                    .focusEffect(.none)
+                #endif
 
             Button("Usa Posizione Attuale") {
                 weatherModel.useCurrentLocation()
