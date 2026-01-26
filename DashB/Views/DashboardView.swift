@@ -18,6 +18,16 @@ struct DashboardView: View {
 
     @FocusState private var isSettingsFocused: Bool
 
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 6..<12: return "Buongiorno"
+        case 12..<18: return "Buon pomeriggio"
+        case 18..<24: return "Buona sera"
+        default: return "Buona notte"
+        }
+    }
+
     var body: some View {
         ZStack {
             GradientBackgroundView()
@@ -27,10 +37,10 @@ struct DashboardView: View {
                 // MARK: - Intestazione
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(showUserName ? "Buona sera, \(userName)" : "Buona sera")
+                        Text(showUserName ? "\(greeting), \(userName)" : greeting)
                             .font(.system(size: 48, weight: .light))
                             .foregroundColor(.white)
-                        Text("Bentornato nella tua dashboard.")
+                        Text(weatherModel.weatherAdvice)
                             .font(.title3)
                             .foregroundColor(.white.opacity(0.6))
                     }

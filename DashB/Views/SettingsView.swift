@@ -79,7 +79,13 @@ struct SettingsView: View {
                                 }
 
                                 QuickActionButton(
-                                    icon: "arrow.triangle.2.circlepath", title: "Aggiorna RSS"
+                                    icon: "arrow.triangle.2.circlepath", title: "Aggiorna Calendari"
+                                ) {
+                                    calendarManager.fetchEvents()
+                                }
+
+                                QuickActionButton(
+                                    icon: "antenna.radiowaves.left.and.right", title: "Aggiorna RSS"
                                 ) {
                                     rssModel.fetchNews()
                                 }

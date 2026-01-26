@@ -10,16 +10,30 @@ import SwiftUI
 struct CalendarView: View {
     @EnvironmentObject var manager: CalendarManager
 
-    private var allDayEvents: [DashboardEvent] {
-        manager.upcomingEvents.filter { $0.isAllDay }
+    private var groupedEvents: [(Date, [DashboardEvent])] {
+        let grouped = Dictionary(grouping: manager.upcomingEvents) { event in
+            Calendar.current.startOfDay(for: event.startDate)
+        }
+        return grouped.sorted { $0.key < $1.key }
     }
 
-    private var timedEvents: [DashboardEvent] {
-        manager.upcomingEvents.filter { !$0.isAllDay }
+    private func dateHeader(for date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return "Oggi"
+        } else if calendar.isDateInTomorrow(date) {
+            return "Domani"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEEE d MMMM"
+            formatter.locale = Locale(identifier: "it_IT")
+            return formatter.string(from: date).capitalized
+        }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
+            // Restore Header
             HStack {
                 Image(systemName: "calendar")
                     .foregroundColor(.red)
@@ -29,109 +43,134 @@ struct CalendarView: View {
             }
             .padding(.bottom, 5)
 
-            if manager.upcomingEvents.isEmpty {
-                VStack(spacing: 15) {
-                    Spacer()
-                    Image(systemName: "calendar.badge.clock")
-                        .font(.system(size: 40))
-                        .foregroundColor(.white.opacity(0.3))
-                    Text("Nessun evento\nin programma")
-                        .font(.body)
-                        .foregroundColor(.white.opacity(0.5))
-                        .multilineTextAlignment(.center)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Sezione Eventi Tutto il Giorno
-                        if !allDayEvents.isEmpty {
-                            ForEach(allDayEvents.prefix(3)) { event in
-                                allDayEventRow(event)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(groupedEvents, id: \.0) { date, events in
+                        VStack(alignment: .leading, spacing: 8) {
+                            // Header Data
+                            Text(dateHeader(for: date).uppercased())
+                                .font(.callout.weight(.semibold))
+                                .foregroundColor(isDateToday(date) ? .red : .gray)
+                                .padding(.leading, 2)
+                                .padding(.bottom, 2)
+
+                            // Eventi
+                            ForEach(events) { event in
+                                if event.isAllDay {
+                                    allDayEventRow(event)
+                                } else {
+                                    timedEventRow(event)
+                                }
                             }
                         }
+                        .padding(.bottom, 10)
+                    }
 
-                        // Sezione Eventi con Orario
-                        ForEach(timedEvents.prefix(5)) { event in
-                            timedEventRow(event)
+                    if groupedEvents.isEmpty {
+                        VStack(spacing: 15) {
+                            Spacer()
+                            Image(systemName: "calendar.badge.clock")
+                                .font(.system(size: 40))
+                                .foregroundColor(.white.opacity(0.3))
+                            Text("Nessun evento\nin programma")
+                                .font(.body)
+                                .foregroundColor(.white.opacity(0.5))
+                                .multilineTextAlignment(.center)
+                            Spacer()
                         }
+                        .frame(height: 200)
+                        .frame(maxWidth: .infinity)
                     }
                 }
             }
         }
-        .padding(25)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)  // Align top
         .background(.ultraThinMaterial)
         .cornerRadius(30)
     }
 
-    // MARK: - Evento Tutto il Giorno (stile più compatto e morbido)
+    private func isDateToday(_ date: Date) -> Bool {
+        Calendar.current.isDateInToday(date)
+    }
+
+    // MARK: - Evento Tutto il Giorno (Pill Style)
     @ViewBuilder
     private func allDayEventRow(_ event: DashboardEvent) -> some View {
         HStack(spacing: 12) {
-            Circle()
-                .fill(event.color.opacity(0.8))
-                .frame(width: 10, height: 10)
+            Image(systemName: "calendar")
+                .font(.system(size: 15))
+                .foregroundColor(event.color)  // Icon color matches event
+                .padding(6)
+                .background(Circle().fill(Color.white.opacity(0.2)))
 
             Text(event.title)
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(.white.opacity(0.9))
-                .fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 25, weight: .semibold))
+                .lineLimit(2)
+                .foregroundColor(event.color)  // Text color matches event
 
             Spacer()
 
-            Text("Tutto il giorno")
-                .font(.system(size: 16))
-                .foregroundColor(.white.opacity(0.5))
+            Text("tutto il giorno")
+                .font(.system(size: 21))
+                .foregroundColor(event.color.opacity(0.8))
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(event.color.opacity(0.15))
-        .cornerRadius(14)
+        .padding(.horizontal, 12)
+        .frame(height: 38)
+        .background(event.color.opacity(0.2))  // Tinted background
+        .cornerRadius(8)  // Smaller radius for items
     }
 
-    // MARK: - Evento con Orario (stile migliorato)
+    // MARK: - Evento con Orario (Vertical Bar Style)
     @ViewBuilder
     private func timedEventRow(_ event: DashboardEvent) -> some View {
-        HStack(alignment: .center, spacing: 15) {
-            RoundedRectangle(cornerRadius: 3)
+        HStack(spacing: 0) {
+            // Vertical Color Bar
+            Rectangle()
                 .fill(event.color)
-                .frame(width: 5)
+                .frame(width: 4)
+                .padding(.vertical, 4)
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(event.title)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundColor(.white)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 25, weight: .semibold))
+                    .foregroundColor(event.color)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)  // Allow wrapping
+
+                HStack(spacing: 6) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 14))
+                    Text(
+                        "\(event.startDate.formatted(date: .omitted, time: .shortened)) - \(event.endDate.formatted(date: .omitted, time: .shortened))"
+                    )
+                    .font(.system(size: 21))
+                }
+                .foregroundColor(event.color.opacity(0.8))
 
                 if let location = event.location, !location.isEmpty {
-                    HStack(spacing: 6) {
-                        Image(systemName: "mappin.and.ellipse")
+                    HStack(spacing: 4) {
+                        Image(systemName: "location.fill")
                             .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.5))
-
                         Text(location)
-                            .font(.system(size: 16))
-                            .foregroundColor(.white.opacity(0.5))
-                            .lineLimit(1)
+                            .font(.system(size: 21))
+                            .fixedSize(horizontal: false, vertical: true)  // Allow location wrapping
                     }
+                    .foregroundColor(event.color.opacity(0.8))
                 }
-
-                Text(
-                    event.startDate.formatted(
-                        date: .omitted, time: .shortened)
-                )
-                .font(.system(size: 16))
-                .foregroundColor(.white.opacity(0.5))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, 12)
+            .padding(.vertical, 10)
+            .padding(.trailing, 12)
+
+            Spacer()
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.06))
-        .cornerRadius(14)
+        .background(event.color.opacity(0.15))  // Sfondo colorato trasparente
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(event.color.opacity(0.3), lineWidth: 1)  // Optional border for better definition
+        )
     }
 }
+

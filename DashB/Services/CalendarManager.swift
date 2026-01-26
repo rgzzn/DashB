@@ -77,6 +77,18 @@ class CalendarManager: ObservableObject {
 
             // Recupera Google
             if googleService.isConnected {
+                // Auto-selezione se vuoto
+                if selectedGoogleCalendars.isEmpty {
+                    do {
+                        let available = try await googleService.fetchAvailableCalendars()
+                        await MainActor.run {
+                            self.selectedGoogleCalendars = available
+                        }
+                    } catch {
+                        print("DEBUG: Auto-select Google calendars failed: \(error)")
+                    }
+                }
+
                 let ids = selectedGoogleCalendars.map { $0.id }
                 if !ids.isEmpty {
                     do {
@@ -102,6 +114,18 @@ class CalendarManager: ObservableObject {
 
             // Recupera Outlook
             if outlookService.isConnected {
+                // Auto-selezione se vuoto
+                if selectedOutlookCalendars.isEmpty {
+                    do {
+                        let available = try await outlookService.fetchAvailableCalendars()
+                        await MainActor.run {
+                            self.selectedOutlookCalendars = available
+                        }
+                    } catch {
+                        print("DEBUG: Auto-select Outlook calendars failed: \(error)")
+                    }
+                }
+
                 let ids = selectedOutlookCalendars.map { $0.id }
                 if !ids.isEmpty {
                     do {
@@ -128,8 +152,8 @@ class CalendarManager: ObservableObject {
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: Date())
             let tomorrow =
-                calendar.date(byAdding: .day, value: 1, to: today)
-                ?? today.addingTimeInterval(86400)
+                calendar.date(byAdding: .day, value: 7, to: today)
+                ?? today.addingTimeInterval(86400 * 7)
 
             let filtered = allEvents.filter { event in
                 event.endDate >= today && event.startDate < tomorrow

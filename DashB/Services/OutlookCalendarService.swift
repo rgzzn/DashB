@@ -269,10 +269,16 @@ class OutlookCalendarService: NSObject, CalendarService {
         let formatter = ISO8601DateFormatter()
         let timeMin = formatter.string(from: startOfDay)
 
+        let endRange =
+            calendar.date(byAdding: .day, value: 3, to: startOfDay)
+            ?? startOfDay.addingTimeInterval(86400 * 3)
+        let timeMax = formatter.string(from: endRange)
+
         let encodedID =
             calendarID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "primary"
+        // Outlook usa ISO 8601 string per il filtro
         let urlString =
-            "https://graph.microsoft.com/v1.0/me/calendars/\(encodedID)/events?$filter=end/dateTime ge '\(timeMin)'&$orderby=start/dateTime&$top=15"
+            "https://graph.microsoft.com/v1.0/me/calendars/\(encodedID)/events?$filter=start/dateTime ge '\(timeMin)' and start/dateTime le '\(timeMax)'&$orderby=start/dateTime&$top=100"
 
         guard let url = URL(string: urlString) else { return [] }
 

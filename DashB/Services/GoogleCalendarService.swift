@@ -260,10 +260,15 @@ class GoogleCalendarService: NSObject, CalendarService {
         let formatter = ISO8601DateFormatter()
         let timeMin = formatter.string(from: startOfDay)
 
+        let endRange =
+            Calendar.current.date(byAdding: .day, value: 3, to: startOfDay)
+            ?? startOfDay.addingTimeInterval(86400 * 3)
+        let timeMax = formatter.string(from: endRange)
+
         let encodedCalendarID =
             calendarID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "primary"
         let urlString =
-            "https://www.googleapis.com/calendar/v3/calendars/\(encodedCalendarID)/events?orderBy=startTime&singleEvents=true&timeMin=\(timeMin)&maxResults=15"
+            "https://www.googleapis.com/calendar/v3/calendars/\(encodedCalendarID)/events?orderBy=startTime&singleEvents=true&timeMin=\(timeMin)&timeMax=\(timeMax)&maxResults=100"
 
         guard let url = URL(string: urlString) else { return [] }
 
@@ -326,3 +331,4 @@ class GoogleCalendarService: NSObject, CalendarService {
         return events
     }
 }
+

@@ -53,6 +53,8 @@ class WeatherModel: NSObject, ObservableObject {
     @Published var cityName: String = "Caricamento..."
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
+    @Published var weatherAdvice: String = "Bentornato nella tua dashboard."
+
     private var timer: Timer?
     private let weatherService = WeatherService.shared
     private let locationManager = CLLocationManager()
@@ -249,6 +251,7 @@ class WeatherModel: NSObject, ObservableObject {
                 self.currentTemp = String(format: "%.0f°", tempC)
                 self.conditionIcon = sfSymbol(for: current.symbolName)
                 self.conditionDescription = self.descriptionForCondition(current.condition)
+                self.weatherAdvice = self.adviceForCondition(current.condition)
 
                 // Previsioni orarie (prossime 4 voci)
                 var items: [Forecast] = []
@@ -296,8 +299,10 @@ class WeatherModel: NSObject, ObservableObject {
                 let tempC = weather.currentWeather.temperature.converted(to: .celsius).value
                 self.currentTemp = String(format: "%.0f°", tempC)
                 self.conditionIcon = sfSymbol(for: weather.currentWeather.symbolName)
+                self.conditionIcon = sfSymbol(for: weather.currentWeather.symbolName)
                 self.conditionDescription = self.descriptionForCondition(
                     weather.currentWeather.condition)
+                self.weatherAdvice = self.adviceForCondition(weather.currentWeather.condition)
 
                 // Hourly forecast (next 4 entries)
                 var items: [Forecast] = []
@@ -344,6 +349,7 @@ class WeatherModel: NSObject, ObservableObject {
             self.currentTemp = "Err"
             self.conditionIcon = "exclamationmark.triangle.fill"
             self.conditionDescription = "Errore"
+            self.weatherAdvice = "Impossibile recuperare il meteo."
 
             let errString = error.localizedDescription
 
@@ -412,6 +418,7 @@ class WeatherModel: NSObject, ObservableObject {
             self.currentTemp = "21°"
             self.conditionIcon = "cloud.sun.fill"
             self.conditionDescription = "Soleggiato"
+            self.weatherAdvice = "Goditi questa bella giornata di sole!"
             let dateFormatter = DateFormatter()
             dateFormatter.locale = Locale(identifier: "it_IT")
             dateFormatter.dateFormat = "HH:mm"
@@ -533,6 +540,56 @@ class WeatherModel: NSObject, ObservableObject {
         }
     }
 
+    private func adviceForCondition(_ condition: WeatherCondition) -> String {
+        switch condition {
+        case .clear, .mostlyClear, .partlyCloudy:
+            return "Una bella giornata! Goditi il sole."
+        case .cloudy, .mostlyCloudy:
+            return "Il cielo è un po' grigio oggi."
+        case .foggy, .haze:
+            return "Attenzione alla visibilità ridotta."
+        case .breezy, .windy:
+            return "Oggi tira vento, copriti bene!"
+        case .drizzle, .rain, .heavyRain:
+            return "Oggi piove, non dimenticare l'ombrello!"
+        case .snow, .heavySnow, .flurries, .blowingSnow, .sleet, .freezingDrizzle, .freezingRain:
+            return "Fa freddo e nevica, copriti bene!"
+        case .hail:
+            return "Attenzione alla grandine!"
+        case .thunderstorms, .isolatedThunderstorms, .scatteredThunderstorms, .strongStorms:
+            return "Ci sono temporali, meglio stare al coperto."
+        case .blowingDust:
+            return "Attenzione alla polvere nell'aria."
+        @unknown default:
+            return "Bentornato nella tua dashboard."
+        }
+    }
+
+    private func adviceFromWeatherCode(_ code: Int) -> String {
+        // Codici Open-Meteo (WMO)
+        // 0-3: Sereno/Nuvoloso
+        // 45,48: Nebbia
+        // 51-67, 80-82: Pioggia/Pioviggine
+        // 71-77, 85-86: Neve
+        // 95-99: Temporali
+        switch code {
+        case 0, 1, 2:
+            return "Una bella giornata! Goditi il sole."
+        case 3:
+            return "Il cielo è coperto oggi."
+        case 45, 48:
+            return "Attenzione alla nebbia."
+        case 51...67, 80...82:
+            return "Giornata di pioggia, ricorda l'ombrello!"
+        case 71...77, 85...86:
+            return "Nevica! Copriti bene se esci."
+        case 95...99:
+            return "Temporali in corso, attenzione."
+        default:
+            return "Bentornato nella tua dashboard."
+        }
+    }
+
     private struct OpenMeteoResponse: Decodable {
         struct Current: Decodable {
             let temperature: Double
@@ -578,6 +635,7 @@ class WeatherModel: NSObject, ObservableObject {
                 self.conditionIcon = self.sfSymbolFromWeatherCode(
                     current.weathercode, isDay: current.is_day)
                 self.conditionDescription = self.descriptionFromWeatherCode(current.weathercode)
+                self.weatherAdvice = self.adviceFromWeatherCode(current.weathercode)
             }
 
             if let hourly = decoded.hourly {
