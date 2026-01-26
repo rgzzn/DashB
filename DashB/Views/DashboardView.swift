@@ -12,6 +12,7 @@ struct DashboardView: View {
     @EnvironmentObject private var calendarManager: CalendarManager
     @EnvironmentObject private var rssModel: RSSModel
     @State private var showingSettings = false
+    @State private var showContent = false
 
     // Impostazioni Utente
     @AppStorage("userName") private var userName = "Luca"
@@ -60,6 +61,8 @@ struct DashboardView: View {
                 }
                 .padding(.horizontal, 60)
                 .padding(.top, 40)
+                .opacity(showContent ? 1 : 0)
+                .offset(y: showContent ? 0 : 12)
 
                 // MARK: - Contenuto Principale (Griglia Bento)
                 HStack(spacing: 30) {
@@ -77,6 +80,8 @@ struct DashboardView: View {
                 }
                 .frame(maxHeight: .infinity)
                 .padding(.horizontal, 60)
+                .opacity(showContent ? 1 : 0)
+                .offset(y: showContent ? 0 : 16)
 
                 // MARK: - Pié di pagina (Azioni)
                 HStack {
@@ -95,12 +100,24 @@ struct DashboardView: View {
                     }
                     .buttonStyle(.card)  // Usa stile scheda per effetto focus nativo
                     .focused($isSettingsFocused)
+                    .scaleEffect(isSettingsFocused ? 1.08 : 1)
+                    .shadow(
+                        color: .black.opacity(isSettingsFocused ? 0.35 : 0.15),
+                        radius: isSettingsFocused ? 16 : 8
+                    )
                 }
                 .padding(.horizontal, 80)
                 .padding(.bottom, 60)
+                .opacity(showContent ? 1 : 0)
+                .offset(y: showContent ? 0 : 10)
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isSettingsFocused)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.6)) {
+                showContent = true
+            }
+        }
         .fullScreenCover(isPresented: $showingSettings) {
             SettingsView()
                 .environmentObject(weatherModel)
