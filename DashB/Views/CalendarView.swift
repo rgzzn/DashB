@@ -9,6 +9,7 @@ import SwiftUI
 
 struct CalendarView: View {
     @EnvironmentObject var manager: CalendarManager
+    @State private var showContent = false
 
     private var groupedEvents: [(Date, [DashboardEvent])] {
         let grouped = Dictionary(grouping: manager.upcomingEvents) { event in
@@ -88,6 +89,12 @@ struct CalendarView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)  // Align top
         .background(.ultraThinMaterial)
         .cornerRadius(30)
+        .opacity(showContent ? 1 : 0)
+        .offset(y: showContent ? 0 : 10)
+        .animation(.easeOut(duration: 0.5), value: showContent)
+        .onAppear {
+            showContent = true
+        }
     }
 
     private func isDateToday(_ date: Date) -> Bool {
@@ -173,4 +180,3 @@ struct CalendarView: View {
         )
     }
 }
-

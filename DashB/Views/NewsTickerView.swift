@@ -30,6 +30,7 @@ struct QRCodeGenerator {
 struct NewsTickerView: View {
     @EnvironmentObject private var model: RSSModel
     @State private var currentIndex: Int = 0
+    @State private var animateBackground = false
     private let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
     private let qrGenerator = QRCodeGenerator()
 
@@ -51,6 +52,7 @@ struct NewsTickerView: View {
                                         .aspectRatio(contentMode: .fill)
                                         .frame(width: geo.size.width, height: geo.size.height)
                                         .clipped()
+                                        .scaleEffect(animateBackground ? 1.05 : 1.0)
                                 case .empty, .failure:
                                     fallbackBackground
                                 @unknown default:
@@ -59,6 +61,7 @@ struct NewsTickerView: View {
                             }
                         } else {
                             fallbackBackground
+                                .scaleEffect(animateBackground ? 1.05 : 1.0)
                         }
 
                         // Sovrapposizione gradiente per leggibilità testo
@@ -147,6 +150,13 @@ struct NewsTickerView: View {
         .background(Color.black)
         .cornerRadius(30)
         .clipped()
+        .animation(
+            .easeInOut(duration: 12).repeatForever(autoreverses: true),
+            value: animateBackground
+        )
+        .onAppear {
+            animateBackground = true
+        }
         .onReceive(timer) { _ in
             withAnimation {
                 if !model.newsItems.isEmpty {

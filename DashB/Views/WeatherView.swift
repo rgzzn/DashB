@@ -9,6 +9,8 @@ import SwiftUI
 
 struct WeatherView: View {
     @EnvironmentObject private var model: WeatherModel
+    @State private var showContent = false
+    @State private var animateIcon = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -19,6 +21,8 @@ struct WeatherView: View {
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 60, height: 60)
                     .symbolRenderingMode(.multicolor)
+                    .scaleEffect(animateIcon ? 1.05 : 1.0)
+                    .offset(y: animateIcon ? -2 : 2)
                     .shadow(color: .yellow.opacity(0.3), radius: 10)
 
                 Spacer()
@@ -102,6 +106,17 @@ struct WeatherView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(.ultraThinMaterial)
         .cornerRadius(30)
+        .opacity(showContent ? 1 : 0)
+        .offset(y: showContent ? 0 : 10)
+        .animation(.easeOut(duration: 0.5), value: showContent)
+        .animation(
+            .easeInOut(duration: 3).repeatForever(autoreverses: true),
+            value: animateIcon
+        )
+        .onAppear {
+            showContent = true
+            animateIcon = true
+        }
         .task {
             await model.refresh()
         }
