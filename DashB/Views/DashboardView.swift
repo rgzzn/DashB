@@ -10,11 +10,12 @@ import SwiftUI
 struct DashboardView: View {
     @EnvironmentObject private var weatherModel: WeatherModel
     @EnvironmentObject private var calendarManager: CalendarManager
+    @EnvironmentObject private var rssModel: RSSModel
     @State private var showingSettings = false
 
     // Impostazioni Utente
     @AppStorage("userName") private var userName = "Luca"
-    @AppStorage("showUserName") private var showUserName = true
+    @AppStorage("showGreeting") private var showGreeting = true
 
     @FocusState private var isSettingsFocused: Bool
 
@@ -28,6 +29,14 @@ struct DashboardView: View {
         }
     }
 
+    private var greetingText: String {
+        let trimmedName = userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            return greeting
+        }
+        return showGreeting ? "\(greeting), \(trimmedName)" : trimmedName
+    }
+
     var body: some View {
         ZStack {
             GradientBackgroundView()
@@ -37,7 +46,7 @@ struct DashboardView: View {
                 // MARK: - Intestazione
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(showUserName ? "\(greeting), \(userName)" : greeting)
+                        Text(greetingText)
                             .font(.system(size: 48, weight: .light))
                             .foregroundColor(.white)
                         Text(weatherModel.weatherAdvice)
@@ -96,6 +105,7 @@ struct DashboardView: View {
             SettingsView()
                 .environmentObject(weatherModel)
                 .environmentObject(calendarManager)
+                .environmentObject(rssModel)
         }
     }
 }
