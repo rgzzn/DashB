@@ -46,7 +46,9 @@ struct CalendarView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
-                    ForEach(groupedEvents, id: \.0) { date, events in
+                    ForEach(Array(groupedEvents.enumerated()), id: \.element.0) { index, entry in
+                        let date = entry.0
+                        let events = entry.1
                         VStack(alignment: .leading, spacing: 8) {
                             // Header Data
                             Text(dateHeader(for: date).uppercased())
@@ -65,6 +67,12 @@ struct CalendarView: View {
                             }
                         }
                         .padding(.bottom, 10)
+                        .opacity(showContent ? 1 : 0)
+                        .offset(y: showContent ? 0 : 8)
+                        .animation(
+                            .easeOut(duration: 0.4).delay(Double(index) * 0.05),
+                            value: showContent
+                        )
                     }
 
                     if groupedEvents.isEmpty {
@@ -81,8 +89,10 @@ struct CalendarView: View {
                         }
                         .frame(height: 200)
                         .frame(maxWidth: .infinity)
+                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
                     }
                 }
+                .animation(.easeOut(duration: 0.35), value: manager.upcomingEvents)
             }
         }
         .padding(20)
@@ -126,6 +136,7 @@ struct CalendarView: View {
         .frame(height: 38)
         .background(event.color.opacity(0.2))  // Tinted background
         .cornerRadius(8)  // Smaller radius for items
+        .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 
     // MARK: - Evento con Orario (Vertical Bar Style)
@@ -178,5 +189,6 @@ struct CalendarView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(event.color.opacity(0.3), lineWidth: 1)  // Optional border for better definition
         )
+        .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 }

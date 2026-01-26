@@ -31,6 +31,7 @@ struct NewsTickerView: View {
     @EnvironmentObject private var model: RSSModel
     @State private var currentIndex: Int = 0
     @State private var animateBackground = false
+    @State private var pulseQRCode = false
     private let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
     private let qrGenerator = QRCodeGenerator()
 
@@ -125,6 +126,7 @@ struct NewsTickerView: View {
                                     .resizable()
                                     .interpolation(.none)
                                     .frame(width: 80, height: 80)
+                                    .scaleEffect(pulseQRCode ? 1.02 : 0.98)
                                     .padding(6)
                                     .background(Color.white)
                                     .cornerRadius(8)
@@ -135,7 +137,7 @@ struct NewsTickerView: View {
                         .padding(24)
                     }
                 }
-                .transition(.opacity.animation(.easeInOut))
+                .transition(.opacity.combined(with: .move(edge: .bottom)).animation(.easeInOut(duration: 0.6)))
                 .id(item.id)  // Forza ridisegno/transizione al cambio
             } else {
                 // Caricamento / Stato Vuoto
@@ -154,8 +156,13 @@ struct NewsTickerView: View {
             .easeInOut(duration: 12).repeatForever(autoreverses: true),
             value: animateBackground
         )
+        .animation(
+            .easeInOut(duration: 4).repeatForever(autoreverses: true),
+            value: pulseQRCode
+        )
         .onAppear {
             animateBackground = true
+            pulseQRCode = true
         }
         .onReceive(timer) { _ in
             withAnimation {

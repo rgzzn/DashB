@@ -37,6 +37,9 @@ struct WeatherView: View {
                 }
             }
             .padding(.bottom, 10)
+            .opacity(showContent ? 1 : 0)
+            .offset(y: showContent ? 0 : 8)
+            .animation(.easeOut(duration: 0.45).delay(0.05), value: showContent)
 
             // Centro: Prossime Ore
             VStack(alignment: .leading, spacing: 10) {
@@ -60,9 +63,14 @@ struct WeatherView: View {
                                 .foregroundColor(.white)
                         }
                         .frame(minWidth: 40)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
             }
+            .opacity(showContent ? 1 : 0)
+            .offset(y: showContent ? 0 : 10)
+            .animation(.easeOut(duration: 0.45).delay(0.12), value: showContent)
+            .animation(.easeOut(duration: 0.35), value: model.hourlyForecast)
 
             Divider()
                 .background(Color.white.opacity(0.2))
@@ -98,9 +106,14 @@ struct WeatherView: View {
                             .font(.callout)
                             .foregroundStyle(.white)
                         }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
             }
+            .opacity(showContent ? 1 : 0)
+            .offset(y: showContent ? 0 : 12)
+            .animation(.easeOut(duration: 0.45).delay(0.2), value: showContent)
+            .animation(.easeOut(duration: 0.35), value: model.dailyForecast)
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
