@@ -106,7 +106,7 @@ struct NewsSettingsView: View {
                             .background(Color.white.opacity(0.08))
                             .cornerRadius(10)
                             #if os(tvOS)
-                                .focusEffect(.none)
+                            .focusable(false)
                             #endif
                     }
 
@@ -119,7 +119,7 @@ struct NewsSettingsView: View {
                             .background(Color.white.opacity(0.08))
                             .cornerRadius(10)
                             #if os(tvOS)
-                                .focusEffect(.none)
+                            .focusable(false)
                             #endif
                             .textInputAutocapitalization(.never)
                             .disableAutocorrection(true)
@@ -200,3 +200,4 @@ struct TrashButtonStyle: ButtonStyle {
             .padding(8)  // Increased reserve space for scale
     }
 }
+

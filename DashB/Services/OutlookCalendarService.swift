@@ -270,8 +270,8 @@ class OutlookCalendarService: NSObject, CalendarService {
         let timeMin = formatter.string(from: startOfDay)
 
         let endRange =
-            calendar.date(byAdding: .day, value: 3, to: startOfDay)
-            ?? startOfDay.addingTimeInterval(86400 * 3)
+            calendar.date(byAdding: .day, value: 30, to: startOfDay)
+            ?? startOfDay.addingTimeInterval(86400 * 30)
         let timeMax = formatter.string(from: endRange)
 
         let encodedID =
@@ -302,29 +302,58 @@ class OutlookCalendarService: NSObject, CalendarService {
             for item in items {
                 if let subject = item["subject"] as? String,
                     let startDict = item["start"] as? [String: Any],
-                    let dateTime = startDict["dateTime"] as? String
+                    let startDateTimeString = startDict["dateTime"] as? String
                 {
                     let locationDict = item["location"] as? [String: Any]
                     let locationName = locationDict?["displayName"] as? String
                     let isAllDay = item["isAllDay"] as? Bool ?? false
 
-                    let isoFormatter = ISO8601DateFormatter()
-                    if let date = isoFormatter.date(from: dateTime) ?? fallbackDate(from: dateTime)
-                    {
+                    let startTimeZoneString = startDict["timeZone"] as? String ?? "UTC"
+
+                    var date: Date?
+
+                    if isAllDay {
+                        // Per eventi tutto il giorno, usiamo la data locale per evitare shift di fuso
+                        let components = startDateTimeString.components(separatedBy: "T")
+                        if let datePart = components.first {
+                            let localFormatter = DateFormatter()
+                            localFormatter.dateFormat = "yyyy-MM-dd"
+                            localFormatter.calendar = Calendar.current
+                            localFormatter.timeZone = Calendar.current.timeZone
+                            date = localFormatter.date(from: datePart)
+                        }
+                    } else {
+                        let tz = TimeZone(identifier: startTimeZoneString) ?? TimeZone.current
+                        date = parseOutlookDate(startDateTimeString, timeZone: tz)
+                    }
+
+                    if let d = date {
                         var endDate: Date?
                         if let endDict = item["end"] as? [String: Any],
-                            let endDateTime = endDict["dateTime"] as? String
+                            let endDateTimeString = endDict["dateTime"] as? String
                         {
-                            endDate =
-                                isoFormatter.date(from: endDateTime)
-                                ?? fallbackDate(from: endDateTime)
+                            if isAllDay {
+                                let components = endDateTimeString.components(separatedBy: "T")
+                                if let datePart = components.first {
+                                    let localFormatter = DateFormatter()
+                                    localFormatter.dateFormat = "yyyy-MM-dd"
+                                    localFormatter.calendar = Calendar.current
+                                    localFormatter.timeZone = Calendar.current.timeZone
+                                    endDate = localFormatter.date(from: datePart)
+                                }
+                            } else {
+                                let endTimeZoneString =
+                                    endDict["timeZone"] as? String ?? startTimeZoneString
+                                let tz = TimeZone(identifier: endTimeZoneString) ?? TimeZone.current
+                                endDate = parseOutlookDate(endDateTimeString, timeZone: tz)
+                            }
                         }
 
-                        let finalEndDate = endDate ?? date
+                        let finalEndDate = endDate ?? d
 
                         events.append(
                             DashboardEvent(
-                                title: subject, startDate: date, endDate: finalEndDate,
+                                title: subject, startDate: d, endDate: finalEndDate,
                                 location: locationName,
                                 color: .blue, calendarID: calendarID, isAllDay: isAllDay))
                     }
@@ -335,9 +364,18 @@ class OutlookCalendarService: NSObject, CalendarService {
         return events
     }
 
-    private func fallbackDate(from string: String) -> Date? {
+    private func parseOutlookDate(_ string: String, timeZone: TimeZone) -> Date? {
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSS"
+        if let date = formatter.date(from: string) { return date }
+
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
+        if let date = formatter.date(from: string) { return date }
+
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         return formatter.date(from: string)
     }
 }

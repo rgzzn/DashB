@@ -261,8 +261,8 @@ class GoogleCalendarService: NSObject, CalendarService {
         let timeMin = formatter.string(from: startOfDay)
 
         let endRange =
-            Calendar.current.date(byAdding: .day, value: 3, to: startOfDay)
-            ?? startOfDay.addingTimeInterval(86400 * 3)
+            Calendar.current.date(byAdding: .day, value: 30, to: startOfDay)
+            ?? startOfDay.addingTimeInterval(86400 * 30)
         let timeMax = formatter.string(from: endRange)
 
         let encodedCalendarID =
@@ -331,4 +331,3 @@ class GoogleCalendarService: NSObject, CalendarService {
         return events
     }
 }
-
