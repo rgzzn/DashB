@@ -92,7 +92,7 @@ struct CalendarView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.98)))
                     }
                 }
-                .animation(.easeOut(duration: 0.35), value: manager.upcomingEvents)
+                .animation(.easeOut(duration: 0.35), value: manager.upcomingEvents.count)
             }
         }
         .padding(20)

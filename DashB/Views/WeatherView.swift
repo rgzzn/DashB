@@ -70,7 +70,7 @@ struct WeatherView: View {
             .opacity(showContent ? 1 : 0)
             .offset(y: showContent ? 0 : 10)
             .animation(.easeOut(duration: 0.45).delay(0.12), value: showContent)
-            .animation(.easeOut(duration: 0.35), value: model.hourlyForecast)
+            .animation(.easeOut(duration: 0.35), value: model.hourlyForecast.count)
 
             Divider()
                 .background(Color.white.opacity(0.2))
@@ -113,7 +113,7 @@ struct WeatherView: View {
             .opacity(showContent ? 1 : 0)
             .offset(y: showContent ? 0 : 12)
             .animation(.easeOut(duration: 0.45).delay(0.2), value: showContent)
-            .animation(.easeOut(duration: 0.35), value: model.dailyForecast)
+            .animation(.easeOut(duration: 0.35), value: model.dailyForecast.count)
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -135,3 +135,4 @@ struct WeatherView: View {
         }
     }
 }
+
