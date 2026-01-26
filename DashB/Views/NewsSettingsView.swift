@@ -105,6 +105,9 @@ struct NewsSettingsView: View {
                             .padding()
                             .background(Color.white.opacity(0.08))
                             .cornerRadius(10)
+                            #if os(tvOS)
+                                .focusEffect(.none)
+                            #endif
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -115,6 +118,9 @@ struct NewsSettingsView: View {
                             .padding()
                             .background(Color.white.opacity(0.08))
                             .cornerRadius(10)
+                            #if os(tvOS)
+                                .focusEffect(.none)
+                            #endif
                             .textInputAutocapitalization(.never)
                             .disableAutocorrection(true)
                     }
