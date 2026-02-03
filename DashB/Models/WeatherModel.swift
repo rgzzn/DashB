@@ -44,6 +44,37 @@ class WeatherModel: NSObject, ObservableObject {
     private static let useManualCityDefaultsKey = "WeatherModel.useManualCity"
     private let geocoder = CLGeocoder()
     private let defaultCity = "Milano"
+    private var cachedManualCity: String?
+    private var cachedManualLocation: CLLocation?
+    private var cachedManualCityName: String?
+
+    private static let hourFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "it_IT")
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+
+    private static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "it_IT")
+        formatter.dateFormat = "EEE"
+        return formatter
+    }()
+
+    private static let openMeteoInputFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
+    private static let openMeteoDayInputFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "it_IT")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 
     @Published var currentTemp: String = "--°"
     @Published var conditionIcon: String = "cloud.fill"
@@ -93,7 +124,16 @@ class WeatherModel: NSObject, ObservableObject {
             let cityQuery = selectedCity.trimmingCharacters(in: .whitespacesAndNewlines)
             #if os(tvOS)
                 if !cityQuery.isEmpty {
-                    if let (location, name) = await geocodeCityName(cityQuery) {
+                    if let cachedCity = cachedManualCity,
+                        cachedCity.caseInsensitiveCompare(cityQuery) == .orderedSame,
+                        let cachedLocation = cachedManualLocation
+                    {
+                        self.cityName = cachedManualCityName ?? cityQuery
+                        await fetchWeather(for: cachedLocation)
+                    } else if let (location, name) = await geocodeCityName(cityQuery) {
+                        cachedManualCity = cityQuery
+                        cachedManualLocation = location
+                        cachedManualCityName = name
                         self.cityName = name
                         await fetchWeather(for: location)
                     } else {
@@ -181,6 +221,9 @@ class WeatherModel: NSObject, ObservableObject {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
             self.selectedCity = trimmed
+            cachedManualCity = nil
+            cachedManualLocation = nil
+            cachedManualCityName = nil
             self.useManualCity = true
             Task { await self.refresh() }
         }
@@ -255,9 +298,6 @@ class WeatherModel: NSObject, ObservableObject {
 
                 // Previsioni orarie (prossime 4 voci)
                 var items: [Forecast] = []
-                let dateFormatter = DateFormatter()
-                dateFormatter.locale = Locale(identifier: "it_IT")
-                dateFormatter.dateFormat = "HH:mm"
 
                 let hours = hourly.prefix(4)
                 for (index, hour) in hours.enumerated() {
@@ -265,7 +305,7 @@ class WeatherModel: NSObject, ObservableObject {
                     if index == 0 {
                         label = "Ora"
                     } else {
-                        label = dateFormatter.string(from: hour.date)
+                        label = Self.hourFormatter.string(from: hour.date)
                     }
                     let icon = sfSymbol(for: hour.symbolName)
                     let t = hour.temperature.converted(to: .celsius).value
@@ -276,13 +316,10 @@ class WeatherModel: NSObject, ObservableObject {
 
                 // Previsioni giornaliere (prossimi 5 giorni)
                 var dailyItems: [DailyForecast] = []
-                let dayFormatter = DateFormatter()
-                dayFormatter.locale = Locale(identifier: "it_IT")
-                dayFormatter.dateFormat = "EEE"  // Wed, Thu, etc.
 
                 let days = daily.dropFirst().prefix(5)
                 for day in days {
-                    let label = dayFormatter.string(from: day.date)
+                    let label = Self.dayFormatter.string(from: day.date)
                     let icon = sfSymbol(for: day.symbolName)
                     let high = day.highTemperature.converted(to: .celsius).value
                     let low = day.lowTemperature.converted(to: .celsius).value
@@ -299,16 +336,12 @@ class WeatherModel: NSObject, ObservableObject {
                 let tempC = weather.currentWeather.temperature.converted(to: .celsius).value
                 self.currentTemp = String(format: "%.0f°", tempC)
                 self.conditionIcon = sfSymbol(for: weather.currentWeather.symbolName)
-                self.conditionIcon = sfSymbol(for: weather.currentWeather.symbolName)
                 self.conditionDescription = self.descriptionForCondition(
                     weather.currentWeather.condition)
                 self.weatherAdvice = self.adviceForCondition(weather.currentWeather.condition)
 
                 // Hourly forecast (next 4 entries)
                 var items: [Forecast] = []
-                let dateFormatter = DateFormatter()
-                dateFormatter.locale = Locale(identifier: "it_IT")
-                dateFormatter.dateFormat = "HH:mm"
 
                 let hours = weather.hourlyForecast.prefix(4)
                 for (index, hour) in hours.enumerated() {
@@ -316,7 +349,7 @@ class WeatherModel: NSObject, ObservableObject {
                     if index == 0 {
                         label = "Ora"
                     } else {
-                        label = dateFormatter.string(from: hour.date)
+                        label = Self.hourFormatter.string(from: hour.date)
                     }
                     let icon = sfSymbol(for: hour.symbolName)
                     let t = hour.temperature.converted(to: .celsius).value
@@ -327,13 +360,10 @@ class WeatherModel: NSObject, ObservableObject {
 
                 // Daily forecast (next 5 days)
                 var dailyItems: [DailyForecast] = []
-                let dayFormatter = DateFormatter()
-                dayFormatter.locale = Locale(identifier: "it_IT")
-                dayFormatter.dateFormat = "EEE"
 
                 let days = weather.dailyForecast.dropFirst().prefix(5)
                 for day in days {
-                    let label = dayFormatter.string(from: day.date)
+                    let label = Self.dayFormatter.string(from: day.date)
                     let icon = sfSymbol(for: day.symbolName)
                     let high = day.highTemperature.converted(to: .celsius).value
                     let low = day.lowTemperature.converted(to: .celsius).value
@@ -419,9 +449,6 @@ class WeatherModel: NSObject, ObservableObject {
             self.conditionIcon = "cloud.sun.fill"
             self.conditionDescription = "Soleggiato"
             self.weatherAdvice = "Goditi questa bella giornata di sole!"
-            let dateFormatter = DateFormatter()
-            dateFormatter.locale = Locale(identifier: "it_IT")
-            dateFormatter.dateFormat = "HH:mm"
             let now = Date()
             let times = [
                 now, now.addingTimeInterval(3600), now.addingTimeInterval(7200),
@@ -429,7 +456,7 @@ class WeatherModel: NSObject, ObservableObject {
             ]
             var items: [Forecast] = []
             for (index, t) in times.enumerated() {
-                let label = index == 0 ? "Ora" : dateFormatter.string(from: t)
+                let label = index == 0 ? "Ora" : Self.hourFormatter.string(from: t)
                 let icon = index % 2 == 0 ? "cloud.sun.fill" : "cloud.fill"
                 let temp = 20 + index
                 items.append(Forecast(time: label, icon: icon, temp: String(format: "%d°", temp)))
@@ -437,14 +464,11 @@ class WeatherModel: NSObject, ObservableObject {
             self.hourlyForecast = items
 
             var dailyItems: [DailyForecast] = []
-            let dayFormatter = DateFormatter()
-            dayFormatter.locale = Locale(identifier: "it_IT")
-            dayFormatter.dateFormat = "EEE"
             let calendar = Calendar.current
 
             for i in 1...5 {
                 guard let date = calendar.date(byAdding: .day, value: i, to: now) else { continue }
-                let dayLabel = dayFormatter.string(from: date)
+                let dayLabel = Self.dayFormatter.string(from: date)
                 let icon = i % 2 == 0 ? "cloud.sun.fill" : "sun.max.fill"
                 let high = 22 + i
                 let low = 15 + i
@@ -640,15 +664,13 @@ class WeatherModel: NSObject, ObservableObject {
 
             if let hourly = decoded.hourly {
                 // Open-Meteo restituisce l'ora nel formato "yyyy-MM-ddTHH:mm" (tipo ISO8601 ma semplice)
-                let isoFormatter = DateFormatter()
-                isoFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
-                isoFormatter.locale = Locale(identifier: "en_US_POSIX")
-
                 let now = Date()
                 var startIndex = 0
                 for (idx, ts) in hourly.time.enumerated() {
                     // Prova a trovare il primo slot temporale che è >= adesso (o vicino)
-                    if let d = isoFormatter.date(from: ts), d >= now.addingTimeInterval(-1800) {
+                    if let d = Self.openMeteoInputFormatter.date(from: ts),
+                        d >= now.addingTimeInterval(-1800)
+                    {
                         // Consenti buffer di 30 min per non saltare l'ora corrente solo perché siamo a xx:01
                         startIndex = idx
                         break
@@ -658,39 +680,31 @@ class WeatherModel: NSObject, ObservableObject {
                 let end = min(startIndex + 4, hourly.time.count)
                 var items: [Forecast] = []
 
-                let outputFormatter = DateFormatter()
-                outputFormatter.locale = Locale(identifier: "it_IT")
-                outputFormatter.dateFormat = "HH:mm"
-
                 for idx in startIndex..<end {
                     let rawTime = hourly.time[idx]
                     var label = "--:--"
 
                     if idx == startIndex {
                         label = "Ora"
-                    } else if let date = isoFormatter.date(from: rawTime) {
-                        label = outputFormatter.string(from: date)
+                    } else if let date = Self.openMeteoInputFormatter.date(from: rawTime) {
+                        label = Self.hourFormatter.string(from: date)
                     }
 
                     let temp = idx < hourly.temperature_2m.count ? hourly.temperature_2m[idx] : .nan
+                    let tempString =
+                        temp.isNaN ? "--°" : String(format: "%.0f°", temp)
                     let code = hourly.weathercode?[idx] ?? 0
                     let isDay = hourly.is_day?[idx] ?? 1
                     items.append(
                         Forecast(
                             time: label, icon: self.sfSymbolFromWeatherCode(code, isDay: isDay),
-                            temp: String(format: "%.0f°", temp)))
+                            temp: tempString))
                 }
                 self.hourlyForecast = items
             }
 
             if let daily = decoded.daily {
                 var dailyItems: [DailyForecast] = []
-                let df = DateFormatter()
-                df.locale = Locale(identifier: "it_IT")
-                df.dateFormat = "yyyy-MM-dd"
-                let outDf = DateFormatter()
-                outDf.locale = Locale(identifier: "it_IT")
-                outDf.dateFormat = "EEE"
 
                 let count = daily.time.count
                 // Inizia dall'indice 1 (domani) per saltare oggi, prendi fino a 5 giorni
@@ -699,7 +713,9 @@ class WeatherModel: NSObject, ObservableObject {
 
                 for i in startIndex..<endIndex {
                     let label =
-                        df.date(from: daily.time[i]).map { outDf.string(from: $0) } ?? daily.time[i]
+                        Self.openMeteoDayInputFormatter.date(from: daily.time[i]).map {
+                            Self.dayFormatter.string(from: $0)
+                        } ?? daily.time[i]
                     let code = daily.weathercode?[i] ?? 0
                     let high = daily.temperature_2m_max[i]
                     let low = daily.temperature_2m_min[i]
