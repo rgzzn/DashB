@@ -37,7 +37,9 @@ class OutlookCalendarService: NSObject, CalendarService {
     }
 
     private func checkConnectionStatus() {
-        if KeychainHelper.shared.read(service: keychainService, account: accessTokenKey) != nil {
+        if KeychainHelper.shared.read(service: keychainService, account: accessTokenKey) != nil,
+            KeychainHelper.shared.read(service: keychainService, account: refreshTokenKey) != nil
+        {
             DispatchQueue.main.async {
                 self.isConnected = true
             }
@@ -192,6 +194,12 @@ class OutlookCalendarService: NSObject, CalendarService {
                 return true
             }
         }
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let error = json["error"] as? String,
+            error == "invalid_grant" || error == "interaction_required"
+        {
+            logout()
+        }
         return false
     }
 
@@ -222,11 +230,8 @@ class OutlookCalendarService: NSObject, CalendarService {
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
-            if try await refreshToken() {
-                return try await fetchAvailableCalendars()
-            }
-            throw URLError(.userAuthenticationRequired)
+        if try await shouldRetryAfterAuthFailure(response: response, data: data) {
+            return try await fetchAvailableCalendars()
         }
 
         var calendars: [CalendarInfo] = []
@@ -287,11 +292,8 @@ class OutlookCalendarService: NSObject, CalendarService {
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
-            if try await refreshToken() {
-                return try await fetchEventsForSingleCalendar(calendarID)
-            }
-            throw URLError(.userAuthenticationRequired)
+        if try await shouldRetryAfterAuthFailure(response: response, data: data) {
+            return try await fetchEventsForSingleCalendar(calendarID)
         }
 
         var events: [DashboardEvent] = []
@@ -377,5 +379,48 @@ class OutlookCalendarService: NSObject, CalendarService {
 
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         return formatter.date(from: string)
+    }
+
+    private func shouldRetryAfterAuthFailure(response: URLResponse?, data: Data) async throws
+        -> Bool
+    {
+        guard let httpResponse = response as? HTTPURLResponse else { return false }
+
+        let authErrorCode = shouldAttemptRefresh(from: data)
+
+        if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 || authErrorCode {
+            if try await refreshToken() {
+                return true
+            }
+            logout()
+            throw URLError(.userAuthenticationRequired)
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let error = json["error"] as? [String: Any],
+                let message = error["message"] as? String
+            {
+                throw NSError(
+                    domain: "Outlook", code: httpResponse.statusCode,
+                    userInfo: [NSLocalizedDescriptionKey: message])
+            }
+            throw NSError(
+                domain: "Outlook", code: httpResponse.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "Errore Outlook \(httpResponse.statusCode)"])
+        }
+
+        return false
+    }
+
+    private func shouldAttemptRefresh(from data: Data) -> Bool {
+        guard
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let error = json["error"] as? [String: Any],
+            let code = error["code"] as? String
+        else {
+            return false
+        }
+        return code == "InvalidAuthenticationToken" || code == "AuthenticationError"
     }
 }
