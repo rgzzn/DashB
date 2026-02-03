@@ -560,6 +560,15 @@ class WeatherModel: NSObject, ObservableObject {
         case .scatteredThunderstorms: return "Temporali Sparsi"
         case .strongStorms: return "Tempeste Forti"
         case .blowingDust: return "Polvere"
+        case .blizzard: return "Bufera di neve"
+        case .frigid: return "Gelo intenso"
+        case .hot: return "Caldo intenso"
+        case .hurricane: return "Uragano"
+        case .smoky: return "Fumosità"
+        case .sunFlurries: return "Raffiche di neve con sole"
+        case .sunShowers: return "Piovaschi con sole"
+        case .tropicalStorm: return "Tempesta tropicale"
+        case .wintryMix: return "Misto invernale"
         @unknown default: return "Sconosciuto"
         }
     }
@@ -584,6 +593,24 @@ class WeatherModel: NSObject, ObservableObject {
             return "Ci sono temporali, meglio stare al coperto."
         case .blowingDust:
             return "Attenzione alla polvere nell'aria."
+        case .blizzard:
+            return "Bufera di neve: evita spostamenti se possibile."
+        case .frigid:
+            return "Freddo intenso: copriti molto bene."
+        case .hot:
+            return "Caldo intenso: resta idratato e evita le ore più calde."
+        case .hurricane:
+            return "Uragano in corso: segui le indicazioni delle autorità."
+        case .smoky:
+            return "Aria fumosa: limita le attività all'aperto."
+        case .sunFlurries:
+            return "Raffiche di neve con schiarite: attenzione alla strada."
+        case .sunShowers:
+            return "Piovaschi con schiarite: porta con te un ombrello."
+        case .tropicalStorm:
+            return "Tempesta tropicale: resta al coperto e informato."
+        case .wintryMix:
+            return "Misto invernale: possibile ghiaccio, guida con cautela."
         @unknown default:
             return "Bentornato nella tua dashboard."
         }
