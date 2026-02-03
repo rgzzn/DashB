@@ -8,6 +8,9 @@
 import Combine
 import CoreLocation
 import Foundation
+#if os(tvOS)
+import MapKit
+#endif
 import SwiftUI
 import WeatherKit
 
@@ -42,7 +45,12 @@ class WeatherModel: NSObject, ObservableObject {
 
     private static let cityDefaultsKey = "WeatherModel.selectedCity"
     private static let useManualCityDefaultsKey = "WeatherModel.useManualCity"
-    private let geocoder = CLGeocoder()
+    #if os(tvOS)
+        @available(tvOS, obsoleted: 26.0)
+        private let geocoder = CLGeocoder()
+    #else
+        private let geocoder = CLGeocoder()
+    #endif
     private let defaultCity = "Milano"
     private var cachedManualCity: String?
     private var cachedManualLocation: CLLocation?
@@ -148,15 +156,15 @@ class WeatherModel: NSObject, ObservableObject {
                     self.cityName = defaultCity
                     await fetchWeather(for: fallback)
                 }
-                return
-            #endif
-            if !cityQuery.isEmpty {
-                // Prova a geocodificare per ottenere coordinate E bel nome
-                if let (location, name) = await geocodeCityName(cityQuery) {
-                    self.cityName = name  // es. "Milano" dal geocoder
-                    await fetchWeather(for: location)
+            #else
+                if !cityQuery.isEmpty {
+                    // Prova a geocodificare per ottenere coordinate E bel nome
+                    if let (location, name) = await geocodeCityName(cityQuery) {
+                        self.cityName = name  // es. "Milano" dal geocoder
+                        await fetchWeather(for: location)
+                    }
                 }
-            }
+            #endif
             return
         }
 
@@ -256,8 +264,58 @@ class WeatherModel: NSObject, ObservableObject {
 
     // Restituisce (Posizione, NomeFormattato)
     private func geocodeCityName(_ name: String) async -> (CLLocation, String)? {
+        #if os(tvOS)
+            if #available(tvOS 26.0, *) {
+                return await geocodeCityNameMapKit(name)
+            }
+        #endif
+        return await geocodeCityNameCLGeocoder(name)
+    }
+
+    private func reverseGeocodeLocation(_ location: CLLocation) async -> String? {
+        #if os(tvOS)
+            if #available(tvOS 26.0, *) {
+                return await reverseGeocodeLocationMapKit(location)
+            }
+        #endif
+        return await reverseGeocodeLocationCLGeocoder(location)
+    }
+
+    #if os(tvOS)
+        @available(tvOS 26.0, *)
+        private func geocodeCityNameMapKit(_ name: String) async -> (CLLocation, String)? {
+            do {
+                let request = MKGeocodingRequest(addressString: name)
+                let results = try await MKGeocoder().geocode(request)
+                guard let placemark = results.first?.placemark else { return nil }
+                let location =
+                    placemark.location
+                    ?? CLLocation(
+                        latitude: placemark.coordinate.latitude,
+                        longitude: placemark.coordinate.longitude)
+                let resolvedName = placemark.locality ?? placemark.name ?? name
+                return (location, resolvedName)
+            } catch {
+                return nil
+            }
+        }
+
+        @available(tvOS 26.0, *)
+        private func reverseGeocodeLocationMapKit(_ location: CLLocation) async -> String? {
+            do {
+                let request = MKReverseGeocodingRequest(location: location)
+                let results = try await MKGeocoder().geocode(request)
+                return results.first?.placemark.locality
+            } catch {
+                return nil
+            }
+        }
+    #endif
+
+    @available(tvOS, obsoleted: 26.0)
+    private func geocodeCityNameCLGeocoder(_ name: String) async -> (CLLocation, String)? {
         await withCheckedContinuation { continuation in
-            geocoder.geocodeAddressString(name) { placemarks, error in
+            geocoder.geocodeAddressString(name) { placemarks, _ in
                 if let placemark = placemarks?.first, let location = placemark.location {
                     // Usa località (Città) o nome, ripiego su input utente
                     let resolvedName = placemark.locality ?? placemark.name ?? name
@@ -269,7 +327,8 @@ class WeatherModel: NSObject, ObservableObject {
         }
     }
 
-    private func reverseGeocodeLocation(_ location: CLLocation) async -> String? {
+    @available(tvOS, obsoleted: 26.0)
+    private func reverseGeocodeLocationCLGeocoder(_ location: CLLocation) async -> String? {
         await withCheckedContinuation { continuation in
             geocoder.reverseGeocodeLocation(location) { placemarks, _ in
                 continuation.resume(returning: placemarks?.first?.locality)
