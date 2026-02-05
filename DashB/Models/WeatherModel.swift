@@ -43,7 +43,7 @@ class WeatherModel: NSObject, ObservableObject {
     private static let cityDefaultsKey = "WeatherModel.selectedCity"
     private static let useManualCityDefaultsKey = "WeatherModel.useManualCity"
     private let geocoder = CLGeocoder()
-    private let defaultCity = "Milano"
+    private let defaultCity = "Forlì"
     private var cachedManualCity: String?
     private var cachedManualLocation: CLLocation?
     private var cachedManualCityName: String?
