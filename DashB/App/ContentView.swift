@@ -14,6 +14,9 @@ struct ContentView: View {
     }
 }
 
-#Preview {
+#Preview("ContentView Preview") {
     ContentView()
+        .environmentObject(WeatherModel())
+        .environmentObject(CalendarManager())
+        .environmentObject(RSSModel())
 }

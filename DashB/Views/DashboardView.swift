@@ -127,7 +127,9 @@ struct DashboardView: View {
     }
 }
 
-#Preview {
+#Preview("DashboardView Preview") {
     DashboardView()
         .environmentObject(WeatherModel())
+        .environmentObject(CalendarManager())
+        .environmentObject(RSSModel())
 }
