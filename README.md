@@ -7,21 +7,24 @@ Progettata con SwiftUI, ha un look premium, animazioni morbide e un focus sulla 
 
 ## 🌟 Highlights
 
-- **Meteo intelligente** con WeatherKit e aggiornamento automatico.
-- **Agenda giornaliera** con eventi da Google Calendar e Microsoft Outlook.
-- **Ticker notizie** da feed RSS locali, con immagini e QR code per leggere l’articolo completo.
-- **Impostazioni rapide** per personalizzare nome, città e account.
+- **Meteo intelligente** con WeatherKit, GPS o città manuale, e aggiornamento automatico.
+- **Agenda giornaliera** da Google Calendar e Microsoft Outlook con colori personalizzati.
+- **Ticker notizie** da feed RSS locali, immagini e QR code per leggere l’articolo completo.
+- **Impostazioni rapide** per profilo, meteo, account e fonti RSS.
 - **Design TV‑friendly** con componenti grandi, contrasto elevato e layout bento.
 
 ---
 
 ## 🧩 Funzionalità principali
 
-- **Dashboard centrale** con saluto personalizzato e orologio.
-- **Meteo**: condizioni attuali, previsioni orarie e a 5 giorni.
-- **Agenda**: eventi di giornata, all‑day e con orario.
-- **Notizie**: rotazione automatica, immagini e QR code per aprire al volo le notizie.
-- **Account**: accesso rapido a Google/Outlook con selezione calendari.
+- **Dashboard centrale** con saluto personalizzato, suggerimenti meteo e orologio.
+- **Meteo**: condizioni attuali, previsioni orarie e a 5 giorni, GPS o città manuale.
+- **Agenda**: eventi di giornata, all‑day e con orario, raggruppati per data.
+- **Calendari**: login Device Flow con QR/code, multi‑account Google/Outlook.
+- **Selezione calendari** con colore per evento e auto‑attivazione iniziale.
+- **Notizie**: rotazione automatica, immagini (Open Graph) e QR code per leggere al volo.
+- **Gestione RSS**: aggiungi/rimuovi fonti e ripristino default.
+- **Azioni rapide**: aggiorna calendari e RSS con un tap.
 
 ---
 
@@ -41,6 +44,7 @@ Progettata con SwiftUI, ha un look premium, animazioni morbide e un focus sulla 
 - **Swift 5.9+**
 - Account **Apple Developer** abilitato a **WeatherKit**
 - Connessione internet attiva
+ - Permessi di **localizzazione** (solo se usi il meteo GPS)
 
 ---
 
@@ -60,6 +64,10 @@ Progettata con SwiftUI, ha un look premium, animazioni morbide e un focus sulla 
 ### WeatherKit
 L’app utilizza WeatherKit. Assicurati che l’entitlement sia attivo e che il profilo di provisioning includa **com.apple.developer.weatherkit**.
 
+Note:
+- Su **tvOS** non è disponibile la posizione utente: di default si usa una città manuale e, se WeatherKit fallisce, viene usato **Open‑Meteo** come fallback.
+- In **Simulator** (DEBUG), se WeatherKit non risponde, vengono mostrati **dati meteo mock**.
+
 ### Google Calendar / Outlook
 Le integrazioni usano il **Device Flow** OAuth.  
 Per produzione è consigliato sostituire le credenziali presenti nei servizi con le proprie:
@@ -73,6 +81,16 @@ Per produzione è consigliato sostituire le credenziali presenti nei servizi con
 Le fonti sono configurate nel modello RSS e possono essere personalizzate:
 
 - `DashB/Models/RSSModel.swift`
+
+Puoi anche gestirle dalla UI (aggiunta, rimozione e reset default).
+
+---
+
+## ⏱️ Aggiornamenti automatici
+
+- **Meteo**: refresh ogni 15 minuti
+- **Notizie RSS**: refresh ogni 15 minuti
+- **Calendari**: refresh ogni 5 minuti
 
 ---
 
