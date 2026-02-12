@@ -14,9 +14,8 @@ class GoogleCalendarService: NSObject, CalendarService {
     let serviceName = "Google Calendar"
 
     // MARK: - Configurazione
-    private let clientID =
-        "312785097359-987aqfia9t8m2ct6vurt36el99o0hl48.apps.googleusercontent.com"
-    private let clientSecret = "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"
+    private let clientID = Config.googleClientID
+    private let clientSecret = Config.googleClientSecret
     private let scope = "https://www.googleapis.com/auth/calendar.readonly"
 
     private let deviceAuthEndpoint = "https://oauth2.googleapis.com/device/code"

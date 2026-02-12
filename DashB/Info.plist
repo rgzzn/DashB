@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict/>
+<dict>
+	<key>GOOGLE_CLIENT_ID</key>
+	<string>$(GOOGLE_CLIENT_ID)</string>
+	<key>GOOGLE_CLIENT_SECRET</key>
+	<string>$(GOOGLE_CLIENT_SECRET)</string>
+	<key>OUTLOOK_CLIENT_ID</key>
+	<string>$(OUTLOOK_CLIENT_ID)</string>
+	<key>OUTLOOK_CLIENT_SECRET</key>
+	<string>$(OUTLOOK_CLIENT_SECRET)</string>
+	<key>OUTLOOK_TENANT_ID</key>
+	<string>$(OUTLOOK_TENANT_ID)</string>
+</dict>
 </plist>

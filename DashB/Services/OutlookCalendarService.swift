@@ -14,9 +14,9 @@ class OutlookCalendarService: NSObject, CalendarService {
     let serviceName = "Outlook / Microsoft 365"
 
     // MARK: - Configurazione
-    private let clientID = "60f1d70e-d828-4638-b3d0-61588d393a4e"
-    private let clientSecret = "Iw88Q~bTf4vSaS370Q6StvV1n~ClxvzGdHqCc-Sr"
-    private let tenantID = "f53380d6-48f1-4cde-a11f-015ed6f5e159"
+    private let clientID = Config.outlookClientID
+    private let clientSecret = Config.outlookClientSecret
+    private let tenantID = Config.outlookTenantID
     private let scope = "Calendars.Read User.Read offline_access"
 
     private var deviceAuthEndpoint: String {
