@@ -10,9 +10,22 @@
 		0D8E6D772F263BD300F0363F /* DashB.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DashB.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		0D028DAD2F3DBA71004238B3 /* Exceptions for "DashB" folder in "DashB" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 0D8E6D762F263BD300F0363F /* DashB */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		0D8E6D792F263BD300F0363F /* DashB */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				0D028DAD2F3DBA71004238B3 /* Exceptions for "DashB" folder in "DashB" target */,
+			);
 			path = DashB;
 			sourceTree = "<group>";
 		};
@@ -256,7 +269,9 @@
 				DEVELOPMENT_TEAM = HPN3692X55;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DashB/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = DashB;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
@@ -288,7 +303,9 @@
 				DEVELOPMENT_TEAM = HPN3692X55;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DashB/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = DashB;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
