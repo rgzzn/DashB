@@ -71,11 +71,15 @@ struct DeviceLoginView: View {
                                 HStack(spacing: 60) {
                                     Button("Riprova") { startAuth() }
                                         .buttonStyle(PremiumButtonStyle())
-                                        .controlSize(.large)
+                                        #if !os(tvOS)
+                                            .controlSize(.large)
+                                        #endif
                                         .accessibilityLabel("Riprova autenticazione")
                                     Button("Annulla") { dismiss() }
                                         .buttonStyle(PremiumButtonStyle())
-                                        .controlSize(.large)
+                                        #if !os(tvOS)
+                                            .controlSize(.large)
+                                        #endif
                                         .accessibilityLabel("Chiudi schermata di accesso")
                                 }
                                 .padding(.top, 50)
@@ -102,8 +106,11 @@ struct DeviceLoginView: View {
                                     .padding(25)
                                     .background(.white)
                                     .cornerRadius(30)
-                                    .accessibilityLabel("Codice QR per collegare \(service.serviceName)")
-                                    .accessibilityHint("Apri la fotocamera del telefono e inquadra il codice")
+                                    .accessibilityLabel(
+                                        "Codice QR per collegare \(service.serviceName)"
+                                    )
+                                    .accessibilityHint(
+                                        "Apri la fotocamera del telefono e inquadra il codice")
                             }
                             Text("Scannerizza ora").font(.headline)
                         }

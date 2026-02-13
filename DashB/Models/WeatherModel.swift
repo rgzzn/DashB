@@ -774,38 +774,46 @@ class WeatherModel: NSObject, ObservableObject {
 }
 
 extension WeatherModel: CLLocationManagerDelegate {
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        authorizationStatus = manager.authorizationStatus
-        if useManualCity { return }
-        switch manager.authorizationStatus {
-        case .authorizedWhenInUse, .authorizedAlways:
-            manager.requestLocation()
-            Task { await refresh() }
-        case .denied, .restricted:
-            Task { await fetchDefaultCityWeather() }
-        case .notDetermined:
-            break
-        @unknown default:
-            break
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        Task { @MainActor in
+            self.authorizationStatus = manager.authorizationStatus
+            if self.useManualCity { return }
+            switch manager.authorizationStatus {
+            case .authorizedWhenInUse, .authorizedAlways:
+                manager.requestLocation()
+                await self.refresh()
+            case .denied, .restricted:
+                await self.fetchDefaultCityWeather()
+            case .notDetermined:
+                break
+            @unknown default:
+                break
+            }
         }
     }
 
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        if let loc = locations.last {
-            locationRequestContinuations.forEach { $0.resume(returning: loc) }
-            locationRequestContinuations.removeAll()
-            Task { await fetchWeather(for: loc) }
-        } else {
-            locationRequestContinuations.forEach { $0.resume(returning: nil) }
-            locationRequestContinuations.removeAll()
+    nonisolated func locationManager(
+        _ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]
+    ) {
+        Task { @MainActor in
+            if let loc = locations.last {
+                self.locationRequestContinuations.forEach { $0.resume(returning: loc) }
+                self.locationRequestContinuations.removeAll()
+                await self.fetchWeather(for: loc)
+            } else {
+                self.locationRequestContinuations.forEach { $0.resume(returning: nil) }
+                self.locationRequestContinuations.removeAll()
+            }
         }
     }
 
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        #if DEBUG
-            print("Location error: \(error)")
-        #endif
-        locationRequestContinuations.forEach { $0.resume(returning: nil) }
-        locationRequestContinuations.removeAll()
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        Task { @MainActor in
+            #if DEBUG
+                print("Location error: \(error)")
+            #endif
+            self.locationRequestContinuations.forEach { $0.resume(returning: nil) }
+            self.locationRequestContinuations.removeAll()
+        }
     }
 }
