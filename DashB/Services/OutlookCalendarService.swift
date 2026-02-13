@@ -30,6 +30,7 @@ class OutlookCalendarService: NSObject, CalendarService {
     private let keychainService = "DashB.Outlook"
     private let accessTokenKey = "accessToken"
     private let refreshTokenKey = "refreshToken"
+    private let authRetryPolicy = AuthRetryPolicy()
 
     override init() {
         super.init()
@@ -214,39 +215,45 @@ class OutlookCalendarService: NSObject, CalendarService {
     // MARK: - Recupero Eventi
 
     func fetchAvailableCalendars() async throws -> [CalendarInfo] {
-        guard
-            let accessToken = KeychainHelper.shared.read(
-                service: keychainService, account: accessTokenKey)
-        else {
-            throw URLError(.userAuthenticationRequired)
-        }
-
         guard let url = URL(string: "https://graph.microsoft.com/v1.0/me/calendars") else {
             return []
         }
 
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        if try await shouldRetryAfterAuthFailure(response: response, data: data) {
-            return try await fetchAvailableCalendars()
-        }
-
-        var calendars: [CalendarInfo] = []
-        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let items = json["value"] as? [[String: Any]]
-        {
-            for item in items {
-                if let id = item["id"] as? String,
-                    let name = item["name"] as? String
-                {
-                    calendars.append(CalendarInfo(id: id, name: name))
-                }
+        for attempt in 0..<authRetryPolicy.maxAttempts {
+            guard
+                let accessToken = KeychainHelper.shared.read(
+                    service: keychainService, account: accessTokenKey)
+            else {
+                throw URLError(.userAuthenticationRequired)
             }
+
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            if try await shouldRetryAfterAuthFailure(response: response, data: data, attempt: attempt) {
+                continue
+            }
+
+            var calendars: [CalendarInfo] = []
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let items = json["value"] as? [[String: Any]]
+            {
+                for item in items {
+                    if let id = item["id"] as? String,
+                        let name = item["name"] as? String
+                    {
+                        calendars.append(CalendarInfo(id: id, name: name))
+                    }
+                }
+            } else {
+                print("DEBUG: Outlook calendar list parsing failed")
+            }
+            return calendars
         }
-        return calendars
+
+        throw URLError(.userAuthenticationRequired)
     }
 
     func fetchEvents(for calendarIDs: [String]) async throws -> [DashboardEvent] {
@@ -262,13 +269,6 @@ class OutlookCalendarService: NSObject, CalendarService {
 
     private func fetchEventsForSingleCalendar(_ calendarID: String) async throws -> [DashboardEvent]
     {
-        guard
-            let accessToken = KeychainHelper.shared.read(
-                service: keychainService, account: accessTokenKey)
-        else {
-            throw URLError(.userAuthenticationRequired)
-        }
-
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: Date())
         let formatter = ISO8601DateFormatter()
@@ -287,83 +287,96 @@ class OutlookCalendarService: NSObject, CalendarService {
 
         guard let url = URL(string: urlString) else { return [] }
 
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        for attempt in 0..<authRetryPolicy.maxAttempts {
+            guard
+                let accessToken = KeychainHelper.shared.read(
+                    service: keychainService, account: accessTokenKey)
+            else {
+                throw URLError(.userAuthenticationRequired)
+            }
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
-        if try await shouldRetryAfterAuthFailure(response: response, data: data) {
-            return try await fetchEventsForSingleCalendar(calendarID)
-        }
+            let (data, response) = try await URLSession.shared.data(for: request)
 
-        var events: [DashboardEvent] = []
+            if try await shouldRetryAfterAuthFailure(response: response, data: data, attempt: attempt) {
+                continue
+            }
 
-        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let items = json["value"] as? [[String: Any]]
-        {
-            for item in items {
-                if let subject = item["subject"] as? String,
-                    let startDict = item["start"] as? [String: Any],
-                    let startDateTimeString = startDict["dateTime"] as? String
-                {
-                    let locationDict = item["location"] as? [String: Any]
-                    let locationName = locationDict?["displayName"] as? String
-                    let isAllDay = item["isAllDay"] as? Bool ?? false
+            var events: [DashboardEvent] = []
 
-                    let startTimeZoneString = startDict["timeZone"] as? String ?? "UTC"
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let items = json["value"] as? [[String: Any]]
+            {
+                for item in items {
+                    if let subject = item["subject"] as? String,
+                        let startDict = item["start"] as? [String: Any],
+                        let startDateTimeString = startDict["dateTime"] as? String
+                    {
+                        let locationDict = item["location"] as? [String: Any]
+                        let locationName = locationDict?["displayName"] as? String
+                        let isAllDay = item["isAllDay"] as? Bool ?? false
 
-                    var date: Date?
+                        let startTimeZoneString = startDict["timeZone"] as? String ?? "UTC"
 
-                    if isAllDay {
-                        // Per eventi tutto il giorno, usiamo la data locale per evitare shift di fuso
-                        let components = startDateTimeString.components(separatedBy: "T")
-                        if let datePart = components.first {
-                            let localFormatter = DateFormatter()
-                            localFormatter.dateFormat = "yyyy-MM-dd"
-                            localFormatter.calendar = Calendar.current
-                            localFormatter.timeZone = Calendar.current.timeZone
-                            date = localFormatter.date(from: datePart)
-                        }
-                    } else {
-                        let tz = TimeZone(identifier: startTimeZoneString) ?? TimeZone.current
-                        date = parseOutlookDate(startDateTimeString, timeZone: tz)
-                    }
+                        var date: Date?
 
-                    if let d = date {
-                        var endDate: Date?
-                        if let endDict = item["end"] as? [String: Any],
-                            let endDateTimeString = endDict["dateTime"] as? String
-                        {
-                            if isAllDay {
-                                let components = endDateTimeString.components(separatedBy: "T")
-                                if let datePart = components.first {
-                                    let localFormatter = DateFormatter()
-                                    localFormatter.dateFormat = "yyyy-MM-dd"
-                                    localFormatter.calendar = Calendar.current
-                                    localFormatter.timeZone = Calendar.current.timeZone
-                                    endDate = localFormatter.date(from: datePart)
-                                }
-                            } else {
-                                let endTimeZoneString =
-                                    endDict["timeZone"] as? String ?? startTimeZoneString
-                                let tz = TimeZone(identifier: endTimeZoneString) ?? TimeZone.current
-                                endDate = parseOutlookDate(endDateTimeString, timeZone: tz)
+                        if isAllDay {
+                            // Per eventi tutto il giorno, usiamo la data locale per evitare shift di fuso
+                            let components = startDateTimeString.components(separatedBy: "T")
+                            if let datePart = components.first {
+                                let localFormatter = DateFormatter()
+                                localFormatter.dateFormat = "yyyy-MM-dd"
+                                localFormatter.calendar = Calendar.current
+                                localFormatter.timeZone = Calendar.current.timeZone
+                                date = localFormatter.date(from: datePart)
                             }
+                        } else {
+                            let tz = TimeZone(identifier: startTimeZoneString) ?? TimeZone.current
+                            date = parseOutlookDate(startDateTimeString, timeZone: tz)
                         }
 
-                        let finalEndDate = endDate ?? d
+                        if let d = date {
+                            var endDate: Date?
+                            if let endDict = item["end"] as? [String: Any],
+                                let endDateTimeString = endDict["dateTime"] as? String
+                            {
+                                if isAllDay {
+                                    let components = endDateTimeString.components(separatedBy: "T")
+                                    if let datePart = components.first {
+                                        let localFormatter = DateFormatter()
+                                        localFormatter.dateFormat = "yyyy-MM-dd"
+                                        localFormatter.calendar = Calendar.current
+                                        localFormatter.timeZone = Calendar.current.timeZone
+                                        endDate = localFormatter.date(from: datePart)
+                                    }
+                                } else {
+                                    let endTimeZoneString =
+                                        endDict["timeZone"] as? String ?? startTimeZoneString
+                                    let tz = TimeZone(identifier: endTimeZoneString) ?? TimeZone.current
+                                    endDate = parseOutlookDate(endDateTimeString, timeZone: tz)
+                                }
+                            }
 
-                        events.append(
-                            DashboardEvent(
-                                title: subject, startDate: d, endDate: finalEndDate,
-                                location: locationName,
-                                color: .blue, calendarID: calendarID, isAllDay: isAllDay))
+                            let finalEndDate = endDate ?? d
+
+                            events.append(
+                                DashboardEvent(
+                                    title: subject, startDate: d, endDate: finalEndDate,
+                                    location: locationName,
+                                    color: .blue, calendarID: calendarID, isAllDay: isAllDay))
+                        }
                     }
                 }
+            } else {
+                print("DEBUG: Outlook events parsing failed for calendar \(calendarID)")
             }
+
+            return events
         }
 
-        return events
+        throw URLError(.userAuthenticationRequired)
     }
 
     private func parseOutlookDate(_ string: String, timeZone: TimeZone) -> Date? {
@@ -381,7 +394,7 @@ class OutlookCalendarService: NSObject, CalendarService {
         return formatter.date(from: string)
     }
 
-    private func shouldRetryAfterAuthFailure(response: URLResponse?, data: Data) async throws
+    private func shouldRetryAfterAuthFailure(response: URLResponse?, data: Data, attempt: Int) async throws
         -> Bool
     {
         guard let httpResponse = response as? HTTPURLResponse else { return false }
@@ -389,7 +402,10 @@ class OutlookCalendarService: NSObject, CalendarService {
         let authErrorCode = shouldAttemptRefresh(from: data)
 
         if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 || authErrorCode {
-            if try await refreshToken() {
+            let canRetry = attempt < authRetryPolicy.maxAttempts - 1
+            if canRetry, try await refreshToken() {
+                let delay = authRetryPolicy.delay(for: attempt + 1)
+                if delay > 0 { try? await Task.sleep(nanoseconds: delay) }
                 return true
             }
             logout()

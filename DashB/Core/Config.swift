@@ -1,45 +1,39 @@
 import Foundation
 
 enum Config {
-    private static let infoDictionary: [String: Any] = {
-        guard let dict = Bundle.main.infoDictionary else {
-            fatalError("Plist file not found")
-        }
-        return dict
-    }()
+    enum OAuthKey: String, CaseIterable {
+        case googleClientID = "GOOGLE_CLIENT_ID"
+        case googleClientSecret = "GOOGLE_CLIENT_SECRET"
+        case outlookClientID = "OUTLOOK_CLIENT_ID"
+        case outlookClientSecret = "OUTLOOK_CLIENT_SECRET"
+        case outlookTenantID = "OUTLOOK_TENANT_ID"
+    }
 
-    static let googleClientID: String = {
-        guard let string = infoDictionary["GOOGLE_CLIENT_ID"] as? String else {
-            fatalError("GOOGLE_CLIENT_ID not set in plist")
-        }
-        return string
-    }()
+    private static let infoDictionary: [String: Any] = Bundle.main.infoDictionary ?? [:]
 
-    static let googleClientSecret: String = {
-        guard let string = infoDictionary["GOOGLE_CLIENT_SECRET"] as? String else {
-            fatalError("GOOGLE_CLIENT_SECRET not set in plist")
-        }
-        return string
-    }()
+    private static func value(for key: OAuthKey) -> String? {
+        guard let value = infoDictionary[key.rawValue] as? String else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
 
-    static let outlookClientID: String = {
-        guard let string = infoDictionary["OUTLOOK_CLIENT_ID"] as? String else {
-            fatalError("OUTLOOK_CLIENT_ID not set in plist")
+    static var missingOAuthKeys: [String] {
+        OAuthKey.allCases.compactMap { key in
+            value(for: key) == nil ? key.rawValue : nil
         }
-        return string
-    }()
+    }
 
-    static let outlookClientSecret: String = {
-        guard let string = infoDictionary["OUTLOOK_CLIENT_SECRET"] as? String else {
-            fatalError("OUTLOOK_CLIENT_SECRET not set in plist")
-        }
-        return string
-    }()
+    static var hasRequiredOAuthConfig: Bool {
+        missingOAuthKeys.isEmpty
+    }
 
-    static let outlookTenantID: String = {
-        guard let string = infoDictionary["OUTLOOK_TENANT_ID"] as? String else {
-            fatalError("OUTLOOK_TENANT_ID not set in plist")
-        }
-        return string
-    }()
+    static let googleClientID: String = value(for: .googleClientID) ?? ""
+
+    static let googleClientSecret: String = value(for: .googleClientSecret) ?? ""
+
+    static let outlookClientID: String = value(for: .outlookClientID) ?? ""
+
+    static let outlookClientSecret: String = value(for: .outlookClientSecret) ?? ""
+
+    static let outlookTenantID: String = value(for: .outlookTenantID) ?? ""
 }
