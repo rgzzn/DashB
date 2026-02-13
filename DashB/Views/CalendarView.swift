@@ -136,6 +136,8 @@ struct CalendarView: View {
         .frame(height: 38)
         .background(event.color.opacity(0.2))  // Tinted background
         .cornerRadius(8)  // Smaller radius for items
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(event.title), tutto il giorno")
         .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 
@@ -185,6 +187,10 @@ struct CalendarView: View {
         }
         .background(event.color.opacity(0.15))  // Sfondo colorato trasparente
         .cornerRadius(8)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(event.title), dalle \(event.startDate.formatted(date: .omitted, time: .shortened)) alle \(event.endDate.formatted(date: .omitted, time: .shortened))"
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(event.color.opacity(0.3), lineWidth: 1)  // Optional border for better definition

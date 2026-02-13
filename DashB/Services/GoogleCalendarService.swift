@@ -66,12 +66,18 @@ class GoogleCalendarService: NSObject, CalendarService {
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        if let httpRes = response as? HTTPURLResponse {
-            print("DEBUG: Google Auth Response Status: \(httpRes.statusCode)")
-            if let string = String(data: data, encoding: .utf8) {
-                print("DEBUG: Google Auth Response Body: \(string)")
+        #if DEBUG
+            if let httpRes = response as? HTTPURLResponse {
+                print("DEBUG: Google Auth Response Status: \(httpRes.statusCode)")
+                if
+                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                    let error = json["error"] as? String
+                {
+                    let desc = json["error_description"] as? String ?? "n/a"
+                    print("DEBUG: Google Auth Error: \(error) (description redacted, len=\(desc.count))")
+                }
             }
-        }
+        #endif
 
         if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
             if let userCode = json["user_code"] as? String,

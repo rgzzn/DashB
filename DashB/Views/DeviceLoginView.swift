@@ -36,6 +36,7 @@ struct DeviceLoginView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 150))
                             .foregroundColor(.green)
+                            .accessibilityHidden(true)
 
                         Text(success)
                             .font(.system(size: 60, weight: .bold))
@@ -54,6 +55,7 @@ struct DeviceLoginView: View {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .font(.system(size: 150))
                                     .foregroundColor(.yellow)
+                                    .accessibilityHidden(true)
 
                                 Text("Attenzione")
                                     .font(.system(size: 80, weight: .bold))
@@ -70,9 +72,11 @@ struct DeviceLoginView: View {
                                     Button("Riprova") { startAuth() }
                                         .buttonStyle(PremiumButtonStyle())
                                         .controlSize(.large)
+                                        .accessibilityLabel("Riprova autenticazione")
                                     Button("Annulla") { dismiss() }
                                         .buttonStyle(PremiumButtonStyle())
                                         .controlSize(.large)
+                                        .accessibilityLabel("Chiudi schermata di accesso")
                                 }
                                 .padding(.top, 50)
                             }
@@ -98,6 +102,8 @@ struct DeviceLoginView: View {
                                     .padding(25)
                                     .background(.white)
                                     .cornerRadius(30)
+                                    .accessibilityLabel("Codice QR per collegare \(service.serviceName)")
+                                    .accessibilityHint("Apri la fotocamera del telefono e inquadra il codice")
                             }
                             Text("Scannerizza ora").font(.headline)
                         }
@@ -136,6 +142,7 @@ struct DeviceLoginView: View {
                                     .font(.caption).foregroundColor(.white.opacity(0.4))
                             }
                             .padding().background(Color.white.opacity(0.05)).cornerRadius(20)
+                            .accessibilityElement(children: .combine)
                         }
                         .frame(maxWidth: 700)
                     }
@@ -169,7 +176,7 @@ struct DeviceLoginView: View {
                 }
             } catch {
                 await MainActor.run {
-                    self.errorMessage = "Errore: \(error.localizedDescription)"
+                    self.errorMessage = friendlyErrorMessage(from: error)
                     self.isLoading = false
                 }
             }
@@ -182,7 +189,7 @@ struct DeviceLoginView: View {
                 timeRemaining -= 1
             } else {
                 timer?.invalidate()
-                errorMessage = "Tempo scaduto."
+                errorMessage = "Il codice è scaduto. Generane uno nuovo per continuare."
             }
         }
     }
@@ -212,7 +219,7 @@ struct DeviceLoginView: View {
                 } catch {
                     await MainActor.run {
                         self.isPolling = false
-                        self.errorMessage = error.localizedDescription
+                        self.errorMessage = friendlyErrorMessage(from: error)
                     }
                     return
                 }
@@ -233,5 +240,20 @@ struct DeviceLoginView: View {
             }
         }
         return nil
+    }
+
+    private func friendlyErrorMessage(from error: Error) -> String {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet:
+                return "Connessione internet assente. Controlla la rete e riprova."
+            case .timedOut:
+                return "La richiesta sta impiegando troppo tempo. Riprova tra poco."
+            default:
+                return "Non siamo riusciti ad avviare l'accesso. Riprova."
+            }
+        }
+
+        return "Accesso non riuscito. Riprova tra qualche istante."
     }
 }
