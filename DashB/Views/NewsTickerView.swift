@@ -122,16 +122,24 @@ struct NewsTickerView: View {
 
                             // Codice QR
                             if let qrCGImage = qrGenerator.generateQRCode(from: item.link) {
-                                Image(decorative: qrCGImage, scale: 1.0)
-                                    .resizable()
-                                    .interpolation(.none)
-                                    .frame(width: 80, height: 80)
-                                    .scaleEffect(pulseQRCode ? 1.02 : 0.98)
-                                    .padding(6)
-                                    .background(Color.white)
-                                    .cornerRadius(8)
-                                    .shadow(radius: 5)
-                                    .padding(.leading, 10)
+                                VStack(spacing: 6) {
+                                    Image(decorative: qrCGImage, scale: 1.0)
+                                        .resizable()
+                                        .interpolation(.none)
+                                        .frame(width: 80, height: 80)
+                                        .scaleEffect(pulseQRCode ? 1.02 : 0.98)
+                                        .padding(6)
+                                        .background(Color.white)
+                                        .cornerRadius(8)
+                                        .shadow(radius: 5)
+                                        .accessibilityLabel("QR articolo: \(item.title)")
+                                        .accessibilityHint("Inquadra con il telefono per aprire l'articolo")
+
+                                    Text("Inquadra")
+                                        .font(.caption2)
+                                        .foregroundColor(.white.opacity(0.8))
+                                }
+                                .padding(.leading, 10)
                             }
                         }
                         .padding(24)

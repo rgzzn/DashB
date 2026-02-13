@@ -38,8 +38,8 @@ class KeychainHelper {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: data,
-            // Importante: rende il token accessibile dopo il primo sblocco, quindi anche in background dopo un riavvio
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            // Importante: accessibile dopo il primo sblocco e non migrabile su altri dispositivi (this-device-only)
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
         ]
 
         let status = SecItemAdd(addQuery as CFDictionary, nil)

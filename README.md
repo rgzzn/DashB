@@ -97,3 +97,6 @@ Creato da **Luca Ragazzini**.
 ---
 
 Se vuoi migliorare DashB o contribuire, sei il benvenuto! 💙
+
+## 🔐 Privacy
+Per dettagli su dati trattati, finalità e retention locale: `PRIVACY.md`.

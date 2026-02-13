@@ -14,6 +14,7 @@ struct NewsSettingsView: View {
     @State private var newFeedUrl: String = ""
     @State private var newFeedSource: String = ""
     @State private var isAddingFeed = false
+    @State private var validationError: String?
 
     // Default feeds backup for reset
     private let defaultFeeds: [FeedConfig] = [
@@ -105,9 +106,6 @@ struct NewsSettingsView: View {
                             .padding()
                             .background(Color.white.opacity(0.08))
                             .cornerRadius(10)
-                            #if os(tvOS)
-                            .focusable(false)
-                            #endif
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -118,12 +116,16 @@ struct NewsSettingsView: View {
                             .padding()
                             .background(Color.white.opacity(0.08))
                             .cornerRadius(10)
-                            #if os(tvOS)
-                            .focusable(false)
-                            #endif
                             .textInputAutocapitalization(.never)
                             .disableAutocorrection(true)
                     }
+
+                    #if os(tvOS)
+                        Text("Suggerimento: puoi incollare l'URL dal telecomando o tastiera remota da iPhone.")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.65))
+                            .fixedSize(horizontal: false, vertical: true)
+                    #endif
 
                     Button {
                         addNewFeed()
@@ -159,6 +161,11 @@ struct NewsSettingsView: View {
             .padding(40)
         }
         .background(GradientBackgroundView().ignoresSafeArea())
+        .alert("URL non valida", isPresented: Binding(get: { validationError != nil }, set: { if !$0 { validationError = nil } })) {
+            Button("OK", role: .cancel) { validationError = nil }
+        } message: {
+            Text(validationError ?? "")
+        }
     }
 
     private func removeFeed(_ feed: FeedConfig) {
@@ -169,8 +176,26 @@ struct NewsSettingsView: View {
 
     private func addNewFeed() {
         guard !newFeedUrl.isEmpty, !newFeedSource.isEmpty else { return }
-        let newFeed = FeedConfig(url: newFeedUrl, source: newFeedSource)
+
+        guard let validatedURL = FeedURLValidator.validatedHTTPSURL(from: newFeedUrl) else {
+            validationError = "Inserisci un URL RSS https valido (host richiesto; localhost non consentito)."
+            return
+        }
+
+        let normalizedSource = newFeedSource.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedSource.isEmpty else {
+            validationError = "Il nome della fonte non può essere vuoto."
+            return
+        }
+
+        let newFeed = FeedConfig(url: validatedURL.absoluteString, source: normalizedSource)
         var currentFeeds = rssModel.feeds
+
+        if currentFeeds.contains(where: { $0.url == newFeed.url }) {
+            validationError = "Questa fonte è già presente."
+            return
+        }
+
         currentFeeds.append(newFeed)
         rssModel.updateFeeds(currentFeeds)
 
@@ -200,4 +225,3 @@ struct TrashButtonStyle: ButtonStyle {
             .padding(8)  // Increased reserve space for scale
     }
 }
-

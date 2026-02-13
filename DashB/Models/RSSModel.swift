@@ -24,6 +24,23 @@ struct FeedConfig {
     let source: String
 }
 
+enum FeedURLValidator {
+    static func validatedHTTPSURL(from rawURL: String) -> URL? {
+        guard let components = URLComponents(string: rawURL.trimmingCharacters(in: .whitespacesAndNewlines)),
+            components.scheme?.lowercased() == "https",
+            let host = components.host,
+            !host.isEmpty
+        else {
+            return nil
+        }
+
+        let blockedHosts = ["localhost", "127.0.0.1", "0.0.0.0", "::1"]
+        if blockedHosts.contains(host.lowercased()) { return nil }
+
+        return components.url
+    }
+}
+
 @MainActor
 class RSSModel: ObservableObject {
     @Published var newsItems: [NewsItem] = []
@@ -91,13 +108,20 @@ class RSSModel: ObservableObject {
     }
 
     private func fetchSingleFeed(_ config: FeedConfig) async -> [NewsItem] {
-        guard let url = URL(string: config.url) else { return [] }
+        guard let url = FeedURLValidator.validatedHTTPSURL(from: config.url) else { return [] }
 
         let request = URLRequest(
             url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
 
         do {
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
+                return []
+            }
+
+            let maxFeedSize = 2 * 1024 * 1024
+            guard data.count <= maxFeedSize else { return [] }
+
             let parser = RSSParser(source: config.source)
             return parser.parse(data: data)
         } catch {

@@ -40,8 +40,11 @@ struct CalendarSelectionView<Service: CalendarService>: View {
                 Spacer()
                 Text(error)
                     .foregroundColor(.red)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 30)
                 Button("Riprova") { loadCalendars() }
                     .buttonStyle(PremiumButtonStyle())
+                    .accessibilityLabel("Riprova caricamento calendari")
                 Spacer()
             } else {
                 ScrollView {
@@ -78,6 +81,7 @@ struct CalendarSelectionView<Service: CalendarService>: View {
                                         )
                                     )
                                     .toggleStyle(.switch)
+                                    .accessibilityLabel("Seleziona calendario \(cal.name)")
                                 }
 
                                 if isSelected {
@@ -106,6 +110,7 @@ struct CalendarSelectionView<Service: CalendarService>: View {
                                                     .shadow(radius: isCurrent ? 5 : 0)
                                             }
                                             .buttonStyle(ColorButtonStyle())
+                                            .accessibilityLabel("Colore \(hex) per \(cal.name)")
                                         }
                                     }
                                     .padding(.vertical, 10)
@@ -148,11 +153,25 @@ struct CalendarSelectionView<Service: CalendarService>: View {
                 }
             } catch {
                 await MainActor.run {
-                    errorMsg = "Errore: \(error.localizedDescription)"
+                    errorMsg = friendlyErrorMessage(from: error)
                     isLoading = false
                 }
             }
         }
+    }
+
+    private func friendlyErrorMessage(from error: Error) -> String {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet:
+                return "Connessione assente. Controlla la rete e riprova."
+            case .timedOut:
+                return "Il servizio calendari non risponde in tempo. Riprova tra poco."
+            default:
+                return "Impossibile caricare i calendari in questo momento."
+            }
+        }
+        return "Impossibile caricare i calendari in questo momento."
     }
 }
 
