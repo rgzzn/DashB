@@ -10,6 +10,12 @@ import SwiftUI
 struct CalendarView: View {
     @EnvironmentObject var manager: CalendarManager
     @State private var showContent = false
+    private static let sectionDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE d MMMM"
+        formatter.locale = Locale(identifier: "it_IT")
+        return formatter
+    }()
 
     private var groupedEvents: [(Date, [DashboardEvent])] {
         let grouped = Dictionary(grouping: manager.upcomingEvents) { event in
@@ -25,10 +31,7 @@ struct CalendarView: View {
         } else if calendar.isDateInTomorrow(date) {
             return "Domani"
         } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "EEEE d MMMM"
-            formatter.locale = Locale(identifier: "it_IT")
-            return formatter.string(from: date).capitalized
+            return Self.sectionDateFormatter.string(from: date).capitalized
         }
     }
 

@@ -8,6 +8,57 @@
 import Combine
 import Foundation
 
+actor OGImageService {
+    private let session: URLSession
+    private let ogImageRegex = try? NSRegularExpression(
+        pattern: "<meta property=\"og:image\" content=\"([^\"]+)\"", options: .caseInsensitive)
+    private let cache = NSCache<NSString, NSString>()
+
+    init() {
+        let cache = URLCache(memoryCapacity: 30 * 1024 * 1024, diskCapacity: 150 * 1024 * 1024)
+        let configuration = URLSessionConfiguration.default
+        configuration.urlCache = cache
+        configuration.requestCachePolicy = .returnCacheDataElseLoad
+        configuration.httpMaximumConnectionsPerHost = 4
+        configuration.timeoutIntervalForRequest = 15
+        self.session = URLSession(configuration: configuration)
+        self.cache.countLimit = 120
+    }
+
+    func ogImageURL(for articleLink: String) async -> String? {
+        if let cached = cache.object(forKey: articleLink as NSString) {
+            return cached as String
+        }
+
+        guard let articleURL = URL(string: articleLink) else { return nil }
+
+        do {
+            let (data, response) = try await session.data(from: articleURL)
+            guard let httpResponse = response as? HTTPURLResponse,
+                (200..<300).contains(httpResponse.statusCode),
+                let html = String(data: data, encoding: .utf8),
+                let ogImage = extractOGImage(from: html)
+            else {
+                return nil
+            }
+            cache.setObject(ogImage as NSString, forKey: articleLink as NSString)
+            return ogImage
+        } catch {
+            return nil
+        }
+    }
+
+    private func extractOGImage(from html: String) -> String? {
+        guard let ogImageRegex else { return nil }
+        let nsString = html as NSString
+        let range = NSRange(location: 0, length: nsString.length)
+        guard let result = ogImageRegex.firstMatch(in: html, options: [], range: range) else {
+            return nil
+        }
+        return nsString.substring(with: result.range(at: 1))
+    }
+}
+
 struct NewsItem: Identifiable, Equatable {
     let id = UUID()
     let title: String
@@ -46,6 +97,7 @@ class RSSModel: ObservableObject {
     @Published var newsItems: [NewsItem] = []
 
     private var timer: Timer?
+    private let ogImageService = OGImageService()
     @Published var feeds: [FeedConfig] = [
         FeedConfig(
             url: "https://www.ansa.it/emiliaromagna/notizie/emiliaromagna_rss.xml", source: "ANSA"),
@@ -103,7 +155,7 @@ class RSSModel: ObservableObject {
             }
 
             self.newsItems = Array(sortedItems.prefix(50))  // Mantieni i primi 50 elementi
-            self.enrichNewsItemsWithImages()
+            await self.enrichNewsItemsWithImages()
         }
     }
 
@@ -130,41 +182,36 @@ class RSSModel: ObservableObject {
         }
     }
 
-    private func enrichNewsItemsWithImages() {
+    private func enrichNewsItemsWithImages() async {
         // Arricchisci solo i primi 12 elementi per risparmiare risorse
-        let itemsToFetch = newsItems.prefix(12)
+        let itemsToFetch = Array(newsItems.prefix(12))
+        let batchSize = 3
 
-        for item in itemsToFetch {
-            guard item.imageUrl == nil, let url = URL(string: item.link) else { continue }
+        guard !itemsToFetch.isEmpty else { return }
 
-            Task {
-                do {
-                    let (data, _) = try await URLSession.shared.data(from: url)
-                    if let html = String(data: data, encoding: .utf8),
-                        let ogImage = self.extractOGImage(from: html)
-                    {
-                        if let index = self.newsItems.firstIndex(where: { $0.id == item.id }) {
-                            self.newsItems[index].imageUrl = ogImage
-                        }
+        for start in stride(from: 0, to: itemsToFetch.count, by: batchSize) {
+            let end = min(start + batchSize, itemsToFetch.count)
+            let batch = itemsToFetch[start..<end]
+
+            await withTaskGroup(of: (UUID, String?).self) { group in
+                for item in batch {
+                    guard item.imageUrl == nil else { continue }
+                    let itemID = item.id
+                    let link = item.link
+                    group.addTask {
+                        let imageURL = await self.ogImageService.ogImageURL(for: link)
+                        return (itemID, imageURL)
                     }
-                } catch {
-                    // Ignora errori di recupero immagine
+                }
+
+                for await (itemID, ogImage) in group {
+                    guard let ogImage,
+                        let index = self.newsItems.firstIndex(where: { $0.id == itemID })
+                    else { continue }
+                    self.newsItems[index].imageUrl = ogImage
                 }
             }
         }
-    }
-
-    private func extractOGImage(from html: String) -> String? {
-        let pattern = "<meta property=\"og:image\" content=\"([^\"]+)\""
-        if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
-            let nsString = html as NSString
-            let results = regex.matches(
-                in: html, options: [], range: NSRange(location: 0, length: nsString.length))
-            if let result = results.first {
-                return nsString.substring(with: result.range(at: 1))
-            }
-        }
-        return nil
     }
 
     deinit {
@@ -181,6 +228,8 @@ class RSSParser: NSObject, XMLParserDelegate {
     private var currentPubDate: String = ""
     private var currentLink: String = ""
     private let source: String
+    private static let imageRegex = try? NSRegularExpression(
+        pattern: "src=\"(http[^\"]+)\"", options: .caseInsensitive)
 
     private lazy var rssDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -270,15 +319,12 @@ class RSSParser: NSObject, XMLParserDelegate {
     }
 
     private func extractImage(from html: String) -> String? {
-        let pattern = "src=\"(http[^\"]+)\""
-        if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
-            let nsString = html as NSString
-            let results = regex.matches(
-                in: html, options: [], range: NSRange(location: 0, length: nsString.length))
-            if let result = results.first {
-                return nsString.substring(with: result.range(at: 1))
-            }
+        guard let regex = Self.imageRegex else { return nil }
+        let nsString = html as NSString
+        let range = NSRange(location: 0, length: nsString.length)
+        guard let result = regex.firstMatch(in: html, options: [], range: range) else {
+            return nil
         }
-        return nil
+        return nsString.substring(with: result.range(at: 1))
     }
 }
