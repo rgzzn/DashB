@@ -11,13 +11,16 @@ import SwiftUI
 struct ClockView: View {
     @State private var currentTime = Date()
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
-    var dateString: String {
+    private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "it_IT")
         formatter.dateStyle = .full
         formatter.timeStyle = .none
-        return formatter.string(from: currentTime).capitalized
+        return formatter
+    }()
+
+    var dateString: String {
+        Self.dateFormatter.string(from: currentTime).capitalized
     }
 
     var body: some View {
