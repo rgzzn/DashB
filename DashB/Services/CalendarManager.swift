@@ -38,6 +38,7 @@ class CalendarManager: ObservableObject {
     let outlookService = OutlookCalendarService()
 
     private var cancellables = Set<AnyCancellable>()
+    private var refreshTimer: Timer?
 
     init() {
         // Reindirizzamento delle modifiche all'UI
@@ -64,9 +65,13 @@ class CalendarManager: ObservableObject {
         fetchEvents()
 
         // Aggiorna periodicamente ogni 5 min
-        Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             self?.fetchEvents()
         }
+    }
+
+    deinit {
+        refreshTimer?.invalidate()
     }
 
     func fetchEvents() {

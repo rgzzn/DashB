@@ -25,6 +25,7 @@ class GoogleCalendarService: NSObject, CalendarService {
     private let keychainService = "DashB.Google"
     private let accessTokenKey = "accessToken"
     private let refreshTokenKey = "refreshToken"
+    private let authRetryPolicy = AuthRetryPolicy()
 
     override init() {
         super.init()
@@ -196,43 +197,50 @@ class GoogleCalendarService: NSObject, CalendarService {
     // MARK: - Recupero
 
     func fetchAvailableCalendars() async throws -> [CalendarInfo] {
-        guard
-            let accessToken = KeychainHelper.shared.read(
-                service: keychainService, account: accessTokenKey)
-        else {
-            throw URLError(.userAuthenticationRequired)
-        }
-
         guard let url = URL(string: "https://www.googleapis.com/calendar/v3/users/me/calendarList")
-        else {
-            return []
-        }
+        else { return [] }
 
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
-            if try await refreshToken() {
-                return try await fetchAvailableCalendars()
+        for attempt in 0..<authRetryPolicy.maxAttempts {
+            guard
+                let accessToken = KeychainHelper.shared.read(
+                    service: keychainService, account: accessTokenKey)
+            else {
+                throw URLError(.userAuthenticationRequired)
             }
-            throw URLError(.userAuthenticationRequired)
-        }
 
-        var calendars: [CalendarInfo] = []
-        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let items = json["items"] as? [[String: Any]]
-        {
-            for item in items {
-                if let id = item["id"] as? String,
-                    let summary = item["summary"] as? String
-                {
-                    calendars.append(CalendarInfo(id: id, name: summary))
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
+                let canRetry = attempt < authRetryPolicy.maxAttempts - 1
+                if canRetry, try await refreshToken() {
+                    let delay = authRetryPolicy.delay(for: attempt + 1)
+                    if delay > 0 { try? await Task.sleep(nanoseconds: delay) }
+                    continue
                 }
+                throw URLError(.userAuthenticationRequired)
             }
+
+            var calendars: [CalendarInfo] = []
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let items = json["items"] as? [[String: Any]]
+            {
+                for item in items {
+                    if let id = item["id"] as? String,
+                        let summary = item["summary"] as? String
+                    {
+                        calendars.append(CalendarInfo(id: id, name: summary))
+                    }
+                }
+            } else {
+                print("DEBUG: Google calendar list parsing failed")
+            }
+            return calendars
         }
-        return calendars
+
+        throw URLError(.userAuthenticationRequired)
     }
 
     func fetchEvents(for calendarIDs: [String]) async throws -> [DashboardEvent] {
@@ -248,13 +256,6 @@ class GoogleCalendarService: NSObject, CalendarService {
 
     private func fetchEventsForSingleCalendar(_ calendarID: String) async throws -> [DashboardEvent]
     {
-        guard
-            let accessToken = KeychainHelper.shared.read(
-                service: keychainService, account: accessTokenKey)
-        else {
-            throw URLError(.userAuthenticationRequired)
-        }
-
         let startOfDay = Calendar.current.startOfDay(for: Date())
         let formatter = ISO8601DateFormatter()
         let timeMin = formatter.string(from: startOfDay)
@@ -271,62 +272,78 @@ class GoogleCalendarService: NSObject, CalendarService {
 
         guard let url = URL(string: urlString) else { return [] }
 
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
-            if try await refreshToken() {
-                return try await fetchEventsForSingleCalendar(calendarID)
+        for attempt in 0..<authRetryPolicy.maxAttempts {
+            guard
+                let accessToken = KeychainHelper.shared.read(
+                    service: keychainService, account: accessTokenKey)
+            else {
+                throw URLError(.userAuthenticationRequired)
             }
-            throw URLError(.userAuthenticationRequired)
-        }
 
-        var events: [DashboardEvent] = []
-        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let items = json["items"] as? [[String: Any]]
-        {
-            for item in items {
-                if let summary = item["summary"] as? String,
-                    let startDict = item["start"] as? [String: Any]
-                {
-                    var date: Date?
-                    var endDate: Date?
-                    var isAllDay = false
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
-                    if let dt = startDict["dateTime"] as? String {
-                        date = formatter.date(from: dt)
-                        isAllDay = false
-                    } else if let d = startDict["date"] as? String {
-                        let df = DateFormatter()
-                        df.dateFormat = "yyyy-MM-dd"
-                        date = df.date(from: d)
-                        isAllDay = true
-                    }
+            let (data, response) = try await URLSession.shared.data(for: request)
 
-                    if let endDict = item["end"] as? [String: Any] {
-                        if let dt = endDict["dateTime"] as? String {
-                            endDate = formatter.date(from: dt)
-                        } else if let d = endDict["date"] as? String {
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
+                let canRetry = attempt < authRetryPolicy.maxAttempts - 1
+                if canRetry, try await refreshToken() {
+                    let delay = authRetryPolicy.delay(for: attempt + 1)
+                    if delay > 0 { try? await Task.sleep(nanoseconds: delay) }
+                    continue
+                }
+                throw URLError(.userAuthenticationRequired)
+            }
+
+            var events: [DashboardEvent] = []
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let items = json["items"] as? [[String: Any]]
+            {
+                for item in items {
+                    if let summary = item["summary"] as? String,
+                        let startDict = item["start"] as? [String: Any]
+                    {
+                        var date: Date?
+                        var endDate: Date?
+                        var isAllDay = false
+
+                        if let dt = startDict["dateTime"] as? String {
+                            date = formatter.date(from: dt)
+                            isAllDay = false
+                        } else if let d = startDict["date"] as? String {
                             let df = DateFormatter()
                             df.dateFormat = "yyyy-MM-dd"
-                            endDate = df.date(from: d)
+                            date = df.date(from: d)
+                            isAllDay = true
+                        }
+
+                        if let endDict = item["end"] as? [String: Any] {
+                            if let dt = endDict["dateTime"] as? String {
+                                endDate = formatter.date(from: dt)
+                            } else if let d = endDict["date"] as? String {
+                                let df = DateFormatter()
+                                df.dateFormat = "yyyy-MM-dd"
+                                endDate = df.date(from: d)
+                            }
+                        }
+
+                        let location = item["location"] as? String
+                        if let d = date {
+                            let finalEndDate = endDate ?? d
+                            events.append(
+                                DashboardEvent(
+                                    title: summary, startDate: d, endDate: finalEndDate,
+                                    location: location, color: .red,
+                                    calendarID: calendarID, isAllDay: isAllDay))
                         }
                     }
-
-                    let location = item["location"] as? String
-                    if let d = date {
-                        let finalEndDate = endDate ?? d
-                        events.append(
-                            DashboardEvent(
-                                title: summary, startDate: d, endDate: finalEndDate,
-                                location: location, color: .red,
-                                calendarID: calendarID, isAllDay: isAllDay))
-                    }
                 }
+            } else {
+                print("DEBUG: Google events parsing failed for calendar \(calendarID)")
             }
+            return events
         }
-        return events
+
+        throw URLError(.userAuthenticationRequired)
     }
 }

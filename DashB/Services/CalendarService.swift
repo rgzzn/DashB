@@ -53,3 +53,21 @@ protocol CalendarService: ObservableObject, Identifiable {
 extension CalendarService {
     var id: String { serviceName }
 }
+
+struct AuthRetryPolicy {
+    let maxAttempts: Int
+    let initialDelayNanoseconds: UInt64
+    let backoffMultiplier: Double
+
+    init(maxAttempts: Int = 3, initialDelayNanoseconds: UInt64 = 300_000_000, backoffMultiplier: Double = 2) {
+        self.maxAttempts = max(1, maxAttempts)
+        self.initialDelayNanoseconds = initialDelayNanoseconds
+        self.backoffMultiplier = max(1, backoffMultiplier)
+    }
+
+    func delay(for attempt: Int) -> UInt64 {
+        guard attempt > 0 else { return 0 }
+        let exponentialFactor = pow(backoffMultiplier, Double(attempt - 1))
+        return UInt64(Double(initialDelayNanoseconds) * exponentialFactor)
+    }
+}

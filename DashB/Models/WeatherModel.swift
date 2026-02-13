@@ -381,27 +381,7 @@ class WeatherModel: NSObject, ObservableObject {
             self.conditionDescription = "Errore"
             self.weatherAdvice = "Impossibile recuperare il meteo."
 
-            let errString = error.localizedDescription
-
-            // Controlla firme di errore comuni
-            if let weatherError = error as? WeatherError {
-                // WeatherError non espone casi missingPermissions/unauthorized. Mostra un messaggio generico con l'errore.
-                self.cityName = "Err WeatherKit: \(weatherError)"
-            } else if errString.localizedCaseInsensitiveContains("WeatherDaemon")
-                || errString.localizedCaseInsensitiveContains("connection")
-            {
-                self.cityName = "Riavvia Sim / Aggiungi Capab."
-            } else if let urlError = error as? URLError {
-                switch urlError.code {
-                case .notConnectedToInternet, .timedOut, .cannotFindHost, .cannotConnectToHost:
-                    self.cityName = "Errore di rete"
-                default:
-                    self.cityName = "Err Rete: \(urlError.localizedDescription)"
-                }
-            } else {
-                // Ripiego
-                self.cityName = errString
-            }
+            self.cityName = userFacingWeatherErrorMessage(for: error)
             #if targetEnvironment(simulator)
                 // Nel Simulatore, mostra sempre dati finti se WeatherKit fallisce
                 self.applyMockWeather()
@@ -417,6 +397,30 @@ class WeatherModel: NSObject, ObservableObject {
                 }
             #endif
         }
+    }
+
+    private func userFacingWeatherErrorMessage(for error: Error) -> String {
+        if error is WeatherError {
+            return "Servizio meteo non disponibile"
+        }
+
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .timedOut, .cannotFindHost, .cannotConnectToHost:
+                return "Errore di rete"
+            default:
+                return "Connessione non disponibile"
+            }
+        }
+
+        let technicalDescription = String(describing: error)
+        if technicalDescription.localizedCaseInsensitiveContains("WeatherDaemon")
+            || technicalDescription.localizedCaseInsensitiveContains("connection")
+        {
+            return "Servizio meteo momentaneamente non raggiungibile"
+        }
+
+        return "Errore meteo temporaneo"
     }
 
     private func sfSymbol(for symbolName: String) -> String {
