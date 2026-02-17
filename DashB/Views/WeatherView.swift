@@ -114,6 +114,22 @@ struct WeatherView: View {
             .offset(y: showContent ? 0 : 12)
             .animation(.easeOut(duration: 0.45).delay(0.2), value: showContent)
             .animation(.easeOut(duration: 0.35), value: model.dailyForecast.count)
+
+            Divider()
+                .background(Color.white.opacity(0.2))
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Fonte dati meteo:  Weather")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.8))
+
+                Link("weatherkit.apple.com/legal-attribution.html", destination: URL(string: "https://weatherkit.apple.com/legal-attribution.html")!)
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .opacity(showContent ? 1 : 0)
+            .offset(y: showContent ? 0 : 12)
+            .animation(.easeOut(duration: 0.45).delay(0.25), value: showContent)
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -135,4 +151,3 @@ struct WeatherView: View {
         }
     }
 }
-
