@@ -137,14 +137,27 @@ class WeatherModel: NSObject, ObservableObject {
                         self.cityName = name
                         await fetchWeather(for: location)
                     } else {
-                        // Ripiego su coordinate predefinite su tvOS se la geocodifica fallisce
-                        let fallback = CLLocation(latitude: 45.4642, longitude: 9.1900)
-                        self.cityName = defaultCity
-                        await fetchWeather(for: fallback)
+                        // Ripiego su Open-Meteo se geocodifica Apple fallisce
+                        if let (location, name) = await geocodeCityNameOpenMeteo(cityQuery) {
+                            cachedManualCity = cityQuery
+                            cachedManualLocation = location
+                            cachedManualCityName = name
+                            self.cityName = name
+                            await fetchWeather(for: location)
+                        } else {
+                            // Fallimento TOTALE: mostra errore per la città cercata
+                            self.cityName = cityQuery.capitalized
+                            self.currentTemp = "--°"
+                            self.conditionIcon = "exclamationmark.magnifyingglass"
+                            self.conditionDescription = "Città non trovata"
+                            self.weatherAdvice = "Controlla il nome della città."
+                            self.hourlyForecast = []
+                            self.dailyForecast = []
+                        }
                     }
                 } else {
                     // Nessuna città digitata: usa predefinito
-                    let fallback = CLLocation(latitude: 45.4642, longitude: 9.1900)
+                    let fallback = CLLocation(latitude: 44.2225, longitude: 12.0408)
                     self.cityName = defaultCity
                     await fetchWeather(for: fallback)
                 }
@@ -155,6 +168,19 @@ class WeatherModel: NSObject, ObservableObject {
                 if let (location, name) = await geocodeCityName(cityQuery) {
                     self.cityName = name  // es. "Milano" dal geocoder
                     await fetchWeather(for: location)
+                } else if let (location, name) = await geocodeCityNameOpenMeteo(cityQuery) {
+                    // Fallback Open-Meteo anche su iOS/macOS
+                    self.cityName = name
+                    await fetchWeather(for: location)
+                } else {
+                    // Fallimento TOTALE
+                    self.cityName = cityQuery.capitalized
+                    self.currentTemp = "--°"
+                    self.conditionIcon = "exclamationmark.magnifyingglass"
+                    self.conditionDescription = "Città non trovata"
+                    self.weatherAdvice = "Controlla il nome della città."
+                    self.hourlyForecast = []
+                    self.dailyForecast = []
                 }
             }
             return
@@ -430,8 +456,8 @@ class WeatherModel: NSObject, ObservableObject {
 
     private func fetchDefaultCityWeather() async {
         #if os(tvOS)
-            let location = CLLocation(latitude: 45.4642, longitude: 9.1900)
-            self.cityName = "Milano"
+            let location = CLLocation(latitude: 44.2225, longitude: 12.0408)
+            self.cityName = "Forlì"
             await fetchWeather(for: location)
         #else
             if let (location, name) = await geocodeCityName(defaultCity) {
@@ -668,6 +694,18 @@ class WeatherModel: NSObject, ObservableObject {
         let daily: Daily?
     }
 
+    private struct OpenMeteoGeocodingResponse: Decodable {
+        let results: [OpenMeteoPlace]?
+    }
+
+    private struct OpenMeteoPlace: Decodable {
+        let name: String
+        let latitude: Double
+        let longitude: Double
+        let country: String?
+        let admin1: String?  // Regione/Stato
+    }
+
     private func fetchWeatherFromOpenMeteo(for location: CLLocation) async {
         let lat = location.coordinate.latitude
         let lon = location.coordinate.longitude
@@ -763,6 +801,38 @@ class WeatherModel: NSObject, ObservableObject {
                 print("Open-Meteo fallback failed: \(error)")
             #endif
         }
+    }
+
+    private func geocodeCityNameOpenMeteo(_ name: String) async -> (CLLocation, String)? {
+        // Encodifica il nome città per l'URL
+        guard let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+        else { return nil }
+
+        let urlString =
+            "https://geocoding-api.open-meteo.com/v1/search?name=\(encodedName)&count=1&language=it&format=json"
+
+        guard let url = URL(string: urlString) else { return nil }
+
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let decoded = try JSONDecoder().decode(OpenMeteoGeocodingResponse.self, from: data)
+
+            if let result = decoded.results?.first {
+                let location = CLLocation(latitude: result.latitude, longitude: result.longitude)
+                // Costruisci un nome descrittivo, es: "Milano, Lombardia"
+                var displayName = result.name
+                /*
+                if let admin = result.admin1, !admin.isEmpty {
+                    displayName += ", \(admin)"
+                }
+                 */
+                return (location, displayName)
+            }
+        } catch {
+            print("Open-Meteo Geocoding failed: \(error)")
+        }
+
+        return nil
     }
 
     // MARK: - Continuazione posizione

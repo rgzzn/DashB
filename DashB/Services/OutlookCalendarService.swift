@@ -15,15 +15,14 @@ class OutlookCalendarService: NSObject, CalendarService {
 
     // MARK: - Configurazione
     private let clientID = Config.outlookClientID
-    private let clientSecret = Config.outlookClientSecret
     private let tenantID = Config.outlookTenantID
     private let scope = "Calendars.Read User.Read offline_access"
 
     private var deviceAuthEndpoint: String {
-        "https://login.microsoftonline.com/\(tenantID)/oauth2/v2.0/devicecode"
+        "https://login.microsoftonline.com/common/oauth2/v2.0/devicecode"
     }
     private var tokenEndpoint: String {
-        "https://login.microsoftonline.com/\(tenantID)/oauth2/v2.0/token"
+        "https://login.microsoftonline.com/common/oauth2/v2.0/token"
     }
 
     // Chiavi Keychain
@@ -61,16 +60,29 @@ class OutlookCalendarService: NSObject, CalendarService {
         let charSet = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
         let encodedClientID = clientID.addingPercentEncoding(withAllowedCharacters: charSet) ?? ""
         let encodedScope = scope.addingPercentEncoding(withAllowedCharacters: charSet) ?? ""
-        let encodedSecret = clientSecret.addingPercentEncoding(withAllowedCharacters: charSet) ?? ""
 
-        // Reinserito il segreto e il Tenant ID specifico come richiesto da Azure per app aziendali
-        let bodyString =
-            "client_id=\(encodedClientID)&scope=\(encodedScope)&client_secret=\(encodedSecret)"
+        // REMOVED client_secret for Public Client (Native App) flow
+        let bodyString = "client_id=\(encodedClientID)&scope=\(encodedScope)"
         let bodyData = bodyString.data(using: .utf8)
         request.httpBody = bodyData
         request.setValue("\(bodyData?.count ?? 0)", forHTTPHeaderField: "Content-Length")
 
-        let (data, _) = try await URLSession.shared.data(for: request)
+        print("DEBUG: Requesting Device Code from \(deviceAuthEndpoint)")
+
+        // Debug Request Body (Hide Secret)
+        print(
+            "DEBUG: Request Body -> client_id=\(encodedClientID)&scope=\(encodedScope)"
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        if let httpResponse = response as? HTTPURLResponse {
+            print("DEBUG: Device Auth HTTP Status: \(httpResponse.statusCode)")
+        }
+
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("DEBUG: Device Auth Response: \(responseString)")
+        }
 
         if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
             if let userCode = json["user_code"] as? String,
@@ -88,9 +100,15 @@ class OutlookCalendarService: NSObject, CalendarService {
                     interval: interval
                 )
             } else if let errorDescription = json["error_description"] as? String {
+                print("DEBUG: Device Auth Error Description: \(errorDescription)")
                 throw NSError(
                     domain: "OutlookCalendar", code: -1,
                     userInfo: [NSLocalizedDescriptionKey: errorDescription])
+            } else if let error = json["error"] as? String {
+                print("DEBUG: Device Auth Error Code: \(error)")
+                throw NSError(
+                    domain: "OutlookCalendar", code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: error])
             }
         }
 
@@ -111,10 +129,9 @@ class OutlookCalendarService: NSObject, CalendarService {
         let encodedClientID = clientID.addingPercentEncoding(withAllowedCharacters: charSet) ?? ""
         let encodedDeviceCode =
             deviceCode.addingPercentEncoding(withAllowedCharacters: charSet) ?? ""
-        let encodedSecret = clientSecret.addingPercentEncoding(withAllowedCharacters: charSet) ?? ""
 
         let bodyString =
-            "grant_type=\(encodedGrantType)&client_id=\(encodedClientID)&device_code=\(encodedDeviceCode)&client_secret=\(encodedSecret)"
+            "grant_type=\(encodedGrantType)&client_id=\(encodedClientID)&device_code=\(encodedDeviceCode)"
         let bodyData = bodyString.data(using: .utf8)
         request.httpBody = bodyData
         request.setValue("\(bodyData?.count ?? 0)", forHTTPHeaderField: "Content-Length")
@@ -173,10 +190,9 @@ class OutlookCalendarService: NSObject, CalendarService {
         let encodedGrantType =
             "refresh_token".addingPercentEncoding(withAllowedCharacters: charSet) ?? ""
         let encodedScope = scope.addingPercentEncoding(withAllowedCharacters: charSet) ?? ""
-        let encodedSecret = clientSecret.addingPercentEncoding(withAllowedCharacters: charSet) ?? ""
 
         let body =
-            "client_id=\(encodedClientID)&refresh_token=\(encodedRefresh)&grant_type=\(encodedGrantType)&scope=\(encodedScope)&client_secret=\(encodedSecret)"
+            "client_id=\(encodedClientID)&refresh_token=\(encodedRefresh)&grant_type=\(encodedGrantType)&scope=\(encodedScope)"
         let bodyData = body.data(using: .utf8)
         request.httpBody = bodyData
         request.setValue("\(bodyData?.count ?? 0)", forHTTPHeaderField: "Content-Length")
@@ -232,7 +248,9 @@ class OutlookCalendarService: NSObject, CalendarService {
 
             let (data, response) = try await URLSession.shared.data(for: request)
 
-            if try await shouldRetryAfterAuthFailure(response: response, data: data, attempt: attempt) {
+            if try await shouldRetryAfterAuthFailure(
+                response: response, data: data, attempt: attempt)
+            {
                 continue
             }
 
@@ -300,7 +318,9 @@ class OutlookCalendarService: NSObject, CalendarService {
 
             let (data, response) = try await URLSession.shared.data(for: request)
 
-            if try await shouldRetryAfterAuthFailure(response: response, data: data, attempt: attempt) {
+            if try await shouldRetryAfterAuthFailure(
+                response: response, data: data, attempt: attempt)
+            {
                 continue
             }
 
@@ -354,7 +374,8 @@ class OutlookCalendarService: NSObject, CalendarService {
                                 } else {
                                     let endTimeZoneString =
                                         endDict["timeZone"] as? String ?? startTimeZoneString
-                                    let tz = TimeZone(identifier: endTimeZoneString) ?? TimeZone.current
+                                    let tz =
+                                        TimeZone(identifier: endTimeZoneString) ?? TimeZone.current
                                     endDate = parseOutlookDate(endDateTimeString, timeZone: tz)
                                 }
                             }
@@ -394,7 +415,8 @@ class OutlookCalendarService: NSObject, CalendarService {
         return formatter.date(from: string)
     }
 
-    private func shouldRetryAfterAuthFailure(response: URLResponse?, data: Data, attempt: Int) async throws
+    private func shouldRetryAfterAuthFailure(response: URLResponse?, data: Data, attempt: Int)
+        async throws
         -> Bool
     {
         guard let httpResponse = response as? HTTPURLResponse else { return false }
@@ -440,3 +462,4 @@ class OutlookCalendarService: NSObject, CalendarService {
         return code == "InvalidAuthenticationToken" || code == "AuthenticationError"
     }
 }
+

@@ -8,8 +8,6 @@
 	<string>$(GOOGLE_CLIENT_SECRET)</string>
 	<key>OUTLOOK_CLIENT_ID</key>
 	<string>$(OUTLOOK_CLIENT_ID)</string>
-	<key>OUTLOOK_CLIENT_SECRET</key>
-	<string>$(OUTLOOK_CLIENT_SECRET)</string>
 	<key>OUTLOOK_TENANT_ID</key>
 	<string>$(OUTLOOK_TENANT_ID)</string>
 </dict>

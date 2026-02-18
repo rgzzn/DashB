@@ -340,6 +340,7 @@ struct EditWeatherSheet: View {
     @Binding var city: String
     @Binding var isPresented: Bool
     @EnvironmentObject var weatherModel: WeatherModel
+    @State private var showAttributionQR = false
     @State private var tempCity: String = ""
 
     var body: some View {
@@ -371,9 +372,34 @@ struct EditWeatherSheet: View {
                 isPresented = false
             }
             .buttonStyle(PremiumButtonStyle())
+
+            VStack(spacing: 5) {
+                // Trademark
+                HStack(spacing: 4) {
+                    Text("")
+                    Text("Weather")
+                }
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.6))
+
+                // Legal Link
+                Button("Legal Attribution") {
+                    showAttributionQR = true
+                }
+                .buttonStyle(.plain)
+                .font(.caption2)
+                .foregroundColor(.white.opacity(0.5))
+                .underline()
+            }
+            .padding(.top, 20)
         }
         .padding(50)
         .onAppear { tempCity = city }
+        .sheet(isPresented: $showAttributionQR) {
+            if let url = URL(string: "https://weatherkit.apple.com/legal-attribution.html") {
+                QRCodeView(url: url, title: "Legal Attribution")
+            }
+        }
     }
 }
 

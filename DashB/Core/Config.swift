@@ -5,7 +5,6 @@ enum Config {
         case googleClientID = "GOOGLE_CLIENT_ID"
         case googleClientSecret = "GOOGLE_CLIENT_SECRET"
         case outlookClientID = "OUTLOOK_CLIENT_ID"
-        case outlookClientSecret = "OUTLOOK_CLIENT_SECRET"
         case outlookTenantID = "OUTLOOK_TENANT_ID"
     }
 
@@ -32,8 +31,6 @@ enum Config {
     static let googleClientSecret: String = value(for: .googleClientSecret) ?? ""
 
     static let outlookClientID: String = value(for: .outlookClientID) ?? ""
-
-    static let outlookClientSecret: String = value(for: .outlookClientSecret) ?? ""
 
     static let outlookTenantID: String = value(for: .outlookTenantID) ?? ""
 }
