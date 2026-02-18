@@ -225,3 +225,9 @@ struct TrashButtonStyle: ButtonStyle {
             .padding(8)  // Increased reserve space for scale
     }
 }
+#Preview {
+    NewsSettingsView()
+        .environmentObject(RSSModel())
+        .background(GradientBackgroundView().ignoresSafeArea())
+}
+

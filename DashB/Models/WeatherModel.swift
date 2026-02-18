@@ -58,7 +58,7 @@ class WeatherModel: NSObject, ObservableObject {
     private static let dayFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "it_IT")
-        formatter.dateFormat = "EEE"
+        formatter.dateFormat = "EE"
         return formatter
     }()
 

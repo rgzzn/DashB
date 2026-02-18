@@ -198,3 +198,9 @@ struct NewsTickerView: View {
 extension Color {
     static let transparent = Color.black.opacity(0)
 }
+#Preview("NewsTickerView Preview") {
+    NewsTickerView()
+        .environmentObject(RSSModel())
+        .frame(width: 800, height: 400)
+}
+

@@ -40,3 +40,9 @@ struct ClockView: View {
         }
     }
 }
+#Preview("ClockView Preview") {
+    ClockView()
+        .padding()
+        .background(GradientBackgroundView().ignoresSafeArea())
+}
+

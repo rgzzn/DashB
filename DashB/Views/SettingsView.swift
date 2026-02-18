@@ -516,3 +516,15 @@ struct AccountsSettingsView: View {
         .cornerRadius(20)
     }
 }
+
+#Preview("SettingsView") {
+    // Provide lightweight instances for preview to avoid missing environment objects
+    let weather = WeatherModel()
+    let calendar = CalendarManager()
+    let rss = RSSModel()
+
+    return SettingsView()
+        .environmentObject(weather)
+        .environmentObject(calendar)
+        .environmentObject(rss)
+}

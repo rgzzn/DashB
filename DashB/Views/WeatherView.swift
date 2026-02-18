@@ -17,7 +17,6 @@ struct WeatherView: View {
             // Sopra: Condizioni Attuali
             HStack(alignment: .top) {
                 Image(systemName: model.conditionIcon)
-                    .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 60, height: 60)
                     .symbolRenderingMode(.multicolor)
@@ -136,3 +135,9 @@ struct WeatherView: View {
     }
 }
 
+#Preview("WeatherView Preview") {
+    WeatherView()
+        .environmentObject(WeatherModel())
+        .frame(width: 400, height: 600)
+        .background(GradientBackgroundView().ignoresSafeArea())
+}

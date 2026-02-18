@@ -264,3 +264,8 @@ struct DeviceLoginView: View {
         return "Accesso non riuscito. Riprova tra qualche istante."
     }
 }
+#Preview("DeviceLoginView Preview") {
+    DeviceLoginView(service: MockCalendarService())
+        .environmentObject(CalendarManager())
+}
+

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 struct CalendarSelectionView<Service: CalendarService>: View {
     let service: Service
@@ -24,7 +25,7 @@ struct CalendarSelectionView<Service: CalendarService>: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Seleziona Calendari")
-                    .font(.system(size: 38, weight: .bold))
+                    .font(.system(size: 68, weight: .bold))
                 Spacer()
                 Button("Fatto") { dismiss() }
                     .buttonStyle(PremiumButtonStyle())
@@ -189,3 +190,44 @@ struct ColorButtonStyle: ButtonStyle {
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isFocused)
     }
 }
+
+final class MockCalendarService: ObservableObject, CalendarService {
+    @Published var isConnected: Bool = true
+    let serviceName: String = "Mock Calendars"
+
+    func startDeviceAuth() async throws -> DeviceAuthInfo {
+        DeviceAuthInfo(
+            userCode: "ABCD-1234",
+            verificationUri: "https://example.com/link",
+            deviceCode: "device",
+            expiresIn: 600,
+            interval: 5
+        )
+    }
+
+    func pollForToken(deviceCode: String, interval: Int) async throws -> Bool { false }
+
+    func logout() {}
+
+    func fetchAvailableCalendars() async throws -> [CalendarInfo] {
+        [
+            CalendarInfo(id: "1", name: "Personale", colorHex: "#FF3B30"),
+            CalendarInfo(id: "2", name: "Lavoro", colorHex: "#34C759"),
+            CalendarInfo(id: "3", name: "Progetti", colorHex: "#007AFF")
+        ]
+    }
+
+    func fetchEvents(for calendarIDs: [String]) async throws -> [DashboardEvent] { [] }
+}
+
+struct CalendarSelectionPreviewContainer: View {
+    @State private var selected: [CalendarInfo] = []
+    var body: some View {
+        CalendarSelectionView(service: MockCalendarService(), selectedConfigs: $selected)
+            .background(GradientBackgroundView().ignoresSafeArea())
+    }
+}
+#Preview {
+    CalendarSelectionPreviewContainer()
+}
+

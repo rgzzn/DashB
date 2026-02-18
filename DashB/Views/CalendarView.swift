@@ -201,3 +201,13 @@ struct CalendarView: View {
         .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 }
+#Preview {
+    let manager = CalendarManager()
+    // Optionally populate with mock events if your model supports it
+    return CalendarView()
+        .environmentObject(manager)
+        .frame(width: 400, height: 600)
+        .padding()
+        .background(GradientBackgroundView().ignoresSafeArea())
+}
+
