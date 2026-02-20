@@ -84,12 +84,6 @@ Le fonti sono configurate nel modello RSS e possono essere personalizzate:
 
 ---
 
-## 📸 Anteprima
-
-> *Aggiungi qui screenshot e/o GIF della dashboard.*
-
----
-
 ## 👤 Autore
 
 Creato da **Luca Ragazzini**.
