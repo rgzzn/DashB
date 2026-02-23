@@ -35,6 +35,34 @@ struct SettingsView: View {
     @State private var showingEditWeather = false
     @State private var tempCity = ""
 
+    @ViewBuilder
+    private var quickActions: some View {
+        QuickActionButton(icon: "location.fill", title: "Cambia Città") {
+            tempCity = weatherCity
+            showingEditWeather = true
+        }
+
+        QuickActionButton(
+            icon: "person.crop.circle.badge.plus", title: "Collega Account"
+        ) {
+            // Default to Google for quick action, or show sheet
+            authServiceItem = AuthServiceItem(
+                service: calendarManager.googleService)
+        }
+
+        QuickActionButton(
+            icon: "arrow.triangle.2.circlepath", title: "Aggiorna Calendari"
+        ) {
+            calendarManager.fetchEvents()
+        }
+
+        QuickActionButton(
+            icon: "antenna.radiowaves.left.and.right", title: "Aggiorna RSS"
+        ) {
+            rssModel.fetchNews()
+        }
+    }
+
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack {
@@ -64,33 +92,20 @@ struct SettingsView: View {
                     ScrollView {
                         VStack(spacing: 30) {
                             // Quick Actions Row
-                            HStack(spacing: 20) {
-                                QuickActionButton(icon: "location.fill", title: "Cambia Città") {
-                                    tempCity = weatherCity
-                                    showingEditWeather = true
+                            ViewThatFits(in: .horizontal) {
+                                HStack(spacing: 20) {
+                                    quickActions
                                 }
 
-                                QuickActionButton(
-                                    icon: "person.crop.circle.badge.plus", title: "Collega Account"
+                                LazyVGrid(
+                                    columns: [GridItem(.flexible()), GridItem(.flexible())],
+                                    spacing: 20
                                 ) {
-                                    // Default to Google for quick action, or show sheet
-                                    authServiceItem = AuthServiceItem(
-                                        service: calendarManager.googleService)
-                                }
-
-                                QuickActionButton(
-                                    icon: "arrow.triangle.2.circlepath", title: "Aggiorna Calendari"
-                                ) {
-                                    calendarManager.fetchEvents()
-                                }
-
-                                QuickActionButton(
-                                    icon: "antenna.radiowaves.left.and.right", title: "Aggiorna RSS"
-                                ) {
-                                    rssModel.fetchNews()
+                                    quickActions
                                 }
                             }
                             .padding(.horizontal, 40)
+                            .padding(.vertical, 8)  // Safe margin for hover scale bleeding
 
                             // Bento Grid
                             LazyVGrid(
