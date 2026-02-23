@@ -162,28 +162,29 @@ class WeatherModel: NSObject, ObservableObject {
                     await fetchWeather(for: fallback)
                 }
                 return
-            #endif
-            if !cityQuery.isEmpty {
-                // Prova a geocodificare per ottenere coordinate E bel nome
-                if let (location, name) = await geocodeCityName(cityQuery) {
-                    self.cityName = name  // es. "Milano" dal geocoder
-                    await fetchWeather(for: location)
-                } else if let (location, name) = await geocodeCityNameOpenMeteo(cityQuery) {
-                    // Fallback Open-Meteo anche su iOS/macOS
-                    self.cityName = name
-                    await fetchWeather(for: location)
-                } else {
-                    // Fallimento TOTALE
-                    self.cityName = cityQuery.capitalized
-                    self.currentTemp = "--°"
-                    self.conditionIcon = "exclamationmark.magnifyingglass"
-                    self.conditionDescription = "Città non trovata"
-                    self.weatherAdvice = "Controlla il nome della città."
-                    self.hourlyForecast = []
-                    self.dailyForecast = []
+            #else
+                if !cityQuery.isEmpty {
+                    // Prova a geocodificare per ottenere coordinate E bel nome
+                    if let (location, name) = await geocodeCityName(cityQuery) {
+                        self.cityName = name  // es. "Milano" dal geocoder
+                        await fetchWeather(for: location)
+                    } else if let (location, name) = await geocodeCityNameOpenMeteo(cityQuery) {
+                        // Fallback Open-Meteo anche su iOS/macOS
+                        self.cityName = name
+                        await fetchWeather(for: location)
+                    } else {
+                        // Fallimento TOTALE
+                        self.cityName = cityQuery.capitalized
+                        self.currentTemp = "--°"
+                        self.conditionIcon = "exclamationmark.magnifyingglass"
+                        self.conditionDescription = "Città non trovata"
+                        self.weatherAdvice = "Controlla il nome della città."
+                        self.hourlyForecast = []
+                        self.dailyForecast = []
+                    }
                 }
-            }
-            return
+                return
+            #endif
         }
 
         // Caso 2: Auto / GPS
@@ -191,42 +192,43 @@ class WeatherModel: NSObject, ObservableObject {
             // tvOS non fornisce CoreLocation; ripiego su una città predefinita
             await fetchDefaultCityWeather()
             return
-        #endif
+        #else
 
-        // Controlla prima i permessi
-        switch locationManager.authorizationStatus {
-        case .denied, .restricted:
-            self.cityName = "Permessi Geoloc. Negati"
-            await fetchDefaultCityWeather()
-            return
-        case .notDetermined:
-            #if os(tvOS)
+            // Controlla prima i permessi
+            switch locationManager.authorizationStatus {
+            case .denied, .restricted:
+                self.cityName = "Permessi Geoloc. Negati"
                 await fetchDefaultCityWeather()
                 return
-            #else
-                // In attesa dell'utente...
-                self.cityName = "In attesa di permessi..."
-                locationManager.requestWhenInUseAuthorization()
+            case .notDetermined:
+                #if os(tvOS)
+                    await fetchDefaultCityWeather()
+                    return
+                #else
+                    // In attesa dell'utente...
+                    self.cityName = "In attesa di permessi..."
+                    locationManager.requestWhenInUseAuthorization()
+                    return
+                #endif
+            default:
+                break
+            }
+
+            guard let location = await currentLocation() else {
+                self.cityName = "Posizione non trovata"
+                await fetchDefaultCityWeather()
                 return
-            #endif
-        default:
-            break
-        }
+            }
 
-        guard let location = await currentLocation() else {
-            self.cityName = "Posizione non trovata"
-            await fetchDefaultCityWeather()
-            return
-        }
+            // Geocodifica inversa per mostrare il nome della città per la posizione GPS
+            if let name = await reverseGeocodeLocation(location) {
+                self.cityName = name
+            } else {
+                self.cityName = "Posizione Attuale"
+            }
 
-        // Geocodifica inversa per mostrare il nome della città per la posizione GPS
-        if let name = await reverseGeocodeLocation(location) {
-            self.cityName = name
-        } else {
-            self.cityName = "Posizione Attuale"
-        }
-
-        await fetchWeather(for: location)
+            await fetchWeather(for: location)
+        #endif
     }
 
     func requestLocationIfNeeded() {
@@ -820,7 +822,7 @@ class WeatherModel: NSObject, ObservableObject {
             if let result = decoded.results?.first {
                 let location = CLLocation(latitude: result.latitude, longitude: result.longitude)
                 // Costruisci un nome descrittivo, es: "Milano, Lombardia"
-                var displayName = result.name
+                let displayName = result.name
                 /*
                 if let admin = result.admin1, !admin.isEmpty {
                     displayName += ", \(admin)"

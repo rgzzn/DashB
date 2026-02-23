@@ -77,7 +77,9 @@ struct FeedConfig {
 
 enum FeedURLValidator {
     static func validatedHTTPSURL(from rawURL: String) -> URL? {
-        guard let components = URLComponents(string: rawURL.trimmingCharacters(in: .whitespacesAndNewlines)),
+        guard
+            let components = URLComponents(
+                string: rawURL.trimmingCharacters(in: .whitespacesAndNewlines)),
             components.scheme?.lowercased() == "https",
             let host = components.host,
             !host.isEmpty
@@ -117,8 +119,9 @@ class RSSModel: ObservableObject {
     func startTimer() {
         // Aggiorna il feed ogni 15 minuti
         timer = Timer.scheduledTimer(withTimeInterval: 900, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.fetchNews()
+            guard let self = self else { return }
+            Task {
+                await self.fetchNews()
             }
         }
     }
@@ -167,7 +170,9 @@ class RSSModel: ObservableObject {
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
+            guard let httpResponse = response as? HTTPURLResponse,
+                (200..<300).contains(httpResponse.statusCode)
+            else {
                 return []
             }
 
