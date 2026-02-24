@@ -121,10 +121,12 @@ struct NewsSettingsView: View {
                     }
 
                     #if os(tvOS)
-                        Text("Suggerimento: puoi incollare l'URL dal telecomando o tastiera remota da iPhone.")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.65))
-                            .fixedSize(horizontal: false, vertical: true)
+                        Text(
+                            "Suggerimento: puoi incollare l'URL dal telecomando o tastiera remota da iPhone."
+                        )
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.65))
+                        .fixedSize(horizontal: false, vertical: true)
                     #endif
 
                     Button {
@@ -161,7 +163,11 @@ struct NewsSettingsView: View {
             .padding(40)
         }
         .background(GradientBackgroundView().ignoresSafeArea())
-        .alert("URL non valida", isPresented: Binding(get: { validationError != nil }, set: { if !$0 { validationError = nil } })) {
+        .alert(
+            "URL non valida",
+            isPresented: Binding(
+                get: { validationError != nil }, set: { if !$0 { validationError = nil } })
+        ) {
             Button("OK", role: .cancel) { validationError = nil }
         } message: {
             Text(validationError ?? "")
@@ -178,7 +184,8 @@ struct NewsSettingsView: View {
         guard !newFeedUrl.isEmpty, !newFeedSource.isEmpty else { return }
 
         guard let validatedURL = FeedURLValidator.validatedHTTPSURL(from: newFeedUrl) else {
-            validationError = "Inserisci un URL RSS https valido (host richiesto; localhost non consentito)."
+            validationError =
+                "Inserisci un URL RSS https valido (host richiesto; localhost non consentito)."
             return
         }
 
@@ -221,7 +228,7 @@ struct TrashButtonStyle: ButtonStyle {
                     .fill(isFocused ? Color.red : Color.red.opacity(0.1))
             )
             .scaleEffect(isFocused ? 1.1 : 1.0)  // Reduced scale to prevent clipping
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isFocused)
+            .animation(Motion.focus, value: isFocused)
             .padding(8)  // Increased reserve space for scale
     }
 }
@@ -230,4 +237,3 @@ struct TrashButtonStyle: ButtonStyle {
         .environmentObject(RSSModel())
         .background(GradientBackgroundView().ignoresSafeArea())
 }
-

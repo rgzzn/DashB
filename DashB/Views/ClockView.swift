@@ -29,6 +29,8 @@ struct ClockView: View {
                 .font(.system(size: 80, weight: .bold, design: .monospaced))
                 .foregroundColor(.white)
                 .shadow(radius: 5)
+                .contentTransition(.numericText())
+                .animation(Motion.standard, value: currentTime)
 
             Text(dateString)
                 .font(.system(size: 30, weight: .medium, design: .default))
@@ -45,4 +47,3 @@ struct ClockView: View {
         .padding()
         .background(GradientBackgroundView().ignoresSafeArea())
 }
-

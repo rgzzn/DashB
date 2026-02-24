@@ -73,7 +73,7 @@ struct CalendarView: View {
                         .opacity(showContent ? 1 : 0)
                         .offset(y: showContent ? 0 : 8)
                         .animation(
-                            .easeOut(duration: 0.4).delay(Double(index) * 0.05),
+                            Motion.enter.delay(Double(index) * 0.05),
                             value: showContent
                         )
                     }
@@ -95,7 +95,7 @@ struct CalendarView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.98)))
                     }
                 }
-                .animation(.easeOut(duration: 0.35), value: manager.upcomingEvents.count)
+                .animation(Motion.standard, value: manager.upcomingEvents.count)
             }
         }
         .padding(20)
@@ -104,7 +104,7 @@ struct CalendarView: View {
         .cornerRadius(30)
         .opacity(showContent ? 1 : 0)
         .offset(y: showContent ? 0 : 10)
-        .animation(.easeOut(duration: 0.5), value: showContent)
+        .animation(Motion.enter, value: showContent)
         .onAppear {
             showContent = true
         }
@@ -210,4 +210,3 @@ struct CalendarView: View {
         .padding()
         .background(GradientBackgroundView().ignoresSafeArea())
 }
-

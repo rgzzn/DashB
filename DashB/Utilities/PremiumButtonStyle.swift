@@ -7,6 +7,21 @@
 
 import SwiftUI
 
+/// MotionTokens defines standard animations to keep movement consistent and premium across DashB.
+public enum Motion {
+    /// 120–180 ms: Fast, snappy. Used for micro-interactions (hover, subtle focus).
+    public static let quick = Animation.easeOut(duration: 0.16)
+
+    /// 220–320 ms: Neutral. Used for standard card state transitions.
+    public static let standard = Animation.easeInOut(duration: 0.28)
+
+    /// 350–500 ms: Graceful entry. Used for section entries or major layout changes.
+    public static let enter = Animation.easeOut(duration: 0.42)
+
+    /// Spring physics based: Ideal for elements mimicking physical depth (like focus cards or selection).
+    public static let focus = Animation.spring(response: 0.28, dampingFraction: 0.82)
+}
+
 struct PremiumButtonStyle: ButtonStyle {
     var backgroundColor: Color = .white.opacity(0.12)
     var foregroundColor: Color = .white
@@ -64,8 +79,8 @@ private struct PremiumButtonContainer: View {
                 color: .black.opacity(isFocused ? 0.5 : 0.3), radius: isFocused ? 15 : 10, x: 0,
                 y: isFocused ? 8 : 5
             )
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isFocused)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
+            .animation(Motion.focus, value: isFocused)
+            .animation(Motion.focus, value: configuration.isPressed)
     }
 }
 

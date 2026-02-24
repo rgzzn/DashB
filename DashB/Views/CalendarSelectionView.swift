@@ -5,8 +5,8 @@
 //  Created by Luca Ragazzini on 24/01/26.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 struct CalendarSelectionView<Service: CalendarService>: View {
     let service: Service
@@ -187,7 +187,7 @@ struct ColorButtonStyle: ButtonStyle {
                     .stroke(Color.white, lineWidth: isFocused ? 4 : 0)
                     .padding(-6)
             )
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isFocused)
+            .animation(Motion.focus, value: isFocused)
     }
 }
 
@@ -213,7 +213,7 @@ final class MockCalendarService: ObservableObject, CalendarService {
         [
             CalendarInfo(id: "1", name: "Personale", colorHex: "#FF3B30"),
             CalendarInfo(id: "2", name: "Lavoro", colorHex: "#34C759"),
-            CalendarInfo(id: "3", name: "Progetti", colorHex: "#007AFF")
+            CalendarInfo(id: "3", name: "Progetti", colorHex: "#007AFF"),
         ]
     }
 
@@ -230,4 +230,3 @@ struct CalendarSelectionPreviewContainer: View {
 #Preview {
     CalendarSelectionPreviewContainer()
 }
-

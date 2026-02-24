@@ -63,6 +63,7 @@ struct DashboardView: View {
                 .padding(.top, 40)
                 .opacity(showContent ? 1 : 0)
                 .offset(y: showContent ? 0 : 12)
+                .animation(Motion.enter, value: showContent)
 
                 // MARK: - Contenuto Principale (Griglia Bento)
                 HStack(spacing: 30) {
@@ -82,6 +83,7 @@ struct DashboardView: View {
                 .padding(.horizontal, 60)
                 .opacity(showContent ? 1 : 0)
                 .offset(y: showContent ? 0 : 16)
+                .animation(Motion.enter.delay(0.1), value: showContent)
 
                 // MARK: - Pié di pagina (Azioni)
                 HStack {
@@ -110,13 +112,12 @@ struct DashboardView: View {
                 .padding(.bottom, 60)
                 .opacity(showContent ? 1 : 0)
                 .offset(y: showContent ? 0 : 10)
+                .animation(Motion.enter.delay(0.2), value: showContent)
             }
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isSettingsFocused)
+        .animation(Motion.focus, value: isSettingsFocused)
         .onAppear {
-            withAnimation(.easeOut(duration: 0.6)) {
-                showContent = true
-            }
+            showContent = true
         }
         .fullScreenCover(isPresented: $showingSettings) {
             SettingsView()
