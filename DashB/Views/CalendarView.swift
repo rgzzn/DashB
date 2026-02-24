@@ -57,6 +57,8 @@ struct CalendarView: View {
                             Text(dateHeader(for: date).uppercased())
                                 .font(.callout.weight(.semibold))
                                 .foregroundColor(isDateToday(date) ? .red : .gray)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                                 .padding(.leading, 2)
                                 .padding(.bottom, 2)
 
@@ -126,7 +128,8 @@ struct CalendarView: View {
 
             Text(event.title)
                 .font(.system(size: 25, weight: .semibold))
-                .lineLimit(2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .foregroundColor(event.color)  // Text color matches event
 
             Spacer()
@@ -134,6 +137,8 @@ struct CalendarView: View {
             Text("tutto il giorno")
                 .font(.system(size: 21))
                 .foregroundColor(event.color.opacity(0.8))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .padding(.horizontal, 12)
         .frame(height: 38)
@@ -159,6 +164,7 @@ struct CalendarView: View {
                     .font(.system(size: 25, weight: .semibold))
                     .foregroundColor(event.color)
                     .lineLimit(2)
+                    .minimumScaleFactor(0.8)
                     .fixedSize(horizontal: false, vertical: true)  // Allow wrapping
 
                 HStack(spacing: 6) {
@@ -168,6 +174,8 @@ struct CalendarView: View {
                         "\(event.startDate.formatted(date: .omitted, time: .shortened)) - \(event.endDate.formatted(date: .omitted, time: .shortened))"
                     )
                     .font(.system(size: 21))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 }
                 .foregroundColor(event.color.opacity(0.8))
 

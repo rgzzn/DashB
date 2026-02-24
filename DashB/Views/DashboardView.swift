@@ -43,44 +43,47 @@ struct DashboardView: View {
             GradientBackgroundView()
                 .ignoresSafeArea()
 
-            VStack(spacing: 40) {
+            VStack(spacing: 20) {
                 // MARK: - Intestazione
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(greetingText)
                             .font(.system(size: 48, weight: .light))
                             .foregroundColor(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
                         Text(weatherModel.weatherAdvice)
                             .font(.title3)
                             .foregroundColor(.white.opacity(0.6))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                     }
 
                     Spacer()
 
                     ClockView()
                 }
-                .padding(.horizontal, 60)
-                .padding(.top, 40)
+                .padding(.top, 20)
                 .opacity(showContent ? 1 : 0)
                 .offset(y: showContent ? 0 : 12)
                 .animation(Motion.enter, value: showContent)
+                .layoutPriority(1)
 
                 // MARK: - Contenuto Principale (Griglia Bento)
                 HStack(spacing: 30) {
                     // Colonna 1: Meteo
                     WeatherView()
-                        .frame(maxWidth: 400)  // Larghezza fissa per belle proporzioni
+                        .frame(minWidth: 0, maxWidth: 400, minHeight: 0, maxHeight: .infinity)
 
                     // Colonna 2: Calendario
                     CalendarView()
-                        .frame(maxWidth: 400)
+                        .frame(minWidth: 0, maxWidth: 400, minHeight: 0, maxHeight: .infinity)
 
                     // Colonna 3: Notizie / Hero
                     NewsTickerView()
-                        .frame(maxWidth: .infinity)
+                        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                 }
                 .frame(maxHeight: .infinity)
-                .padding(.horizontal, 60)
                 .opacity(showContent ? 1 : 0)
                 .offset(y: showContent ? 0 : 16)
                 .animation(Motion.enter.delay(0.1), value: showContent)
@@ -93,8 +96,8 @@ struct DashboardView: View {
                         showingSettings = true
                     } label: {
                         Image(systemName: "gearshape.fill")
-                            .font(.system(size: 44, weight: .light))
-                            .padding(20)
+                            .font(.system(size: 10, weight: .light))
+                            .padding(16)
                             .background(
                                 Circle()
                                     .fill(.ultraThinMaterial)
@@ -108,12 +111,14 @@ struct DashboardView: View {
                         radius: isSettingsFocused ? 16 : 8
                     )
                 }
-                .padding(.horizontal, 80)
-                .padding(.bottom, 60)
+                .padding(.bottom, 5)
                 .opacity(showContent ? 1 : 0)
                 .offset(y: showContent ? 0 : 10)
                 .animation(Motion.enter.delay(0.2), value: showContent)
+                .layoutPriority(1)
             }
+            .padding(.horizontal, 40)
+            .frame(maxWidth: .infinity)
         }
         .animation(Motion.focus, value: isSettingsFocused)
         .onAppear {
@@ -131,4 +136,6 @@ struct DashboardView: View {
 #Preview {
     DashboardView()
         .environmentObject(WeatherModel())
+        .environmentObject(CalendarManager())
+        .environmentObject(RSSModel())
 }

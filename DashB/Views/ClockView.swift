@@ -31,11 +31,15 @@ struct ClockView: View {
                 .shadow(radius: 5)
                 .contentTransition(.numericText())
                 .animation(Motion.standard, value: currentTime)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
 
             Text(dateString)
                 .font(.system(size: 30, weight: .medium, design: .default))
                 .foregroundColor(.white.opacity(0.9))
                 .shadow(radius: 3)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
         }
         .onReceive(timer) { input in
             currentTime = input

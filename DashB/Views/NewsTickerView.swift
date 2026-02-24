@@ -85,12 +85,14 @@ struct NewsTickerView: View {
                                     .fontWeight(.bold)
                                     .foregroundColor(.white)
                                     .lineLimit(3)
+                                    .minimumScaleFactor(0.7)
                                     .fixedSize(horizontal: false, vertical: true)
 
                                 Text(stripHTML(from: item.description))
                                     .font(.body)
                                     .foregroundColor(.white.opacity(0.8))
                                     .lineLimit(3)
+                                    .minimumScaleFactor(0.8)
 
                                 HStack {
                                     Text(item.pubDate)

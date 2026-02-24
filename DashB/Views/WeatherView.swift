@@ -12,7 +12,7 @@ struct WeatherView: View {
     @State private var showContent = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 16) {
             // Sopra: Condizioni Attuali
             HStack(alignment: .top) {
                 Image(systemName: model.conditionIcon)
@@ -73,35 +73,40 @@ struct WeatherView: View {
                 .background(Color.white.opacity(0.2))
 
             // Sotto: Previsioni a 5 giorni
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("Previsioni a 5 giorni")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundColor(.white.opacity(0.8))
 
-                VStack(spacing: 12) {
+                VStack(spacing: 8) {
                     ForEach(model.dailyForecast) { day in
                         HStack {
                             Text(day.day)
                                 .font(.callout)
                                 .foregroundStyle(.white.opacity(0.8))
-                                .frame(width: 60, alignment: .leading)
-
-                            Spacer()
+                                .frame(maxWidth: .infinity, alignment: .leading)
 
                             Image(systemName: day.icon)
                                 .symbolRenderingMode(.multicolor)
+                                .font(.title3)
+                                .frame(width: 35)
 
-                            Spacer()
-
-                            HStack(spacing: 8) {
+                            HStack(spacing: 6) {
                                 Text(day.tempHigh)
                                     .fontWeight(.medium)
+                                    .frame(width: 45, alignment: .trailing)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
                                 Text(day.tempLow)
                                     .foregroundStyle(.white.opacity(0.5))
+                                    .frame(width: 45, alignment: .trailing)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
                             }
                             .font(.callout)
                             .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
                         }
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
