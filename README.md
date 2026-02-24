@@ -84,6 +84,18 @@ Le fonti sono configurate nel modello RSS e possono essere personalizzate:
 
 ---
 
+
+## 🆘 Supporto
+Per assistenza utenti finali e richieste supporto usa la pagina dedicata:
+
+- `SUPPORT.md`
+
+URL consigliato per **App Store Connect > Support URL**:
+`https://github.com/rgzzn/DashB/blob/main/SUPPORT.md`
+
+---
+
+
 ## 👤 Autore
 
 Creato da **Luca Ragazzini**.

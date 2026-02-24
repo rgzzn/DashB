@@ -13,7 +13,13 @@ enum Config {
     private static func value(for key: OAuthKey) -> String? {
         guard let value = infoDictionary[key.rawValue] as? String else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        guard !trimmed.isEmpty else { return nil }
+        // In release builds a missing build setting can survive as "$(KEY)".
+        // Treat unresolved placeholders as missing to avoid hanging auth flows.
+        if trimmed.hasPrefix("$(") && trimmed.hasSuffix(")") {
+            return nil
+        }
+        return trimmed
     }
 
     static var missingOAuthKeys: [String] {
@@ -33,4 +39,21 @@ enum Config {
     static let outlookClientID: String = value(for: .outlookClientID) ?? ""
 
     static let outlookTenantID: String = value(for: .outlookTenantID) ?? ""
+
+    static func missingOAuthKeys(for serviceName: String) -> [String] {
+        func missing(_ keys: [OAuthKey]) -> [String] {
+            keys.compactMap { key in
+                value(for: key) == nil ? key.rawValue : nil
+            }
+        }
+
+        switch serviceName {
+        case "Google Calendar":
+            return missing([.googleClientID, .googleClientSecret])
+        case "Outlook Calendar":
+            return missing([.outlookClientID, .outlookTenantID])
+        default:
+            return missingOAuthKeys
+        }
+    }
 }
