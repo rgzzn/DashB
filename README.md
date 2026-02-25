@@ -4,6 +4,11 @@
 Progettata con SwiftUI, ha un look premium, animazioni morbide e un focus sulla leggibilità da lontano.
 
 ---
+## ⬇️ Download
+- **Scarica ora da App Store:** https://apps.apple.com/us/app/dashb/id6759085627
+- **Provala in anteprima su TestFlight:** https://testflight.apple.com/join/hBXZH1qd
+
+---
 
 ## 🌟 Highlights
 
