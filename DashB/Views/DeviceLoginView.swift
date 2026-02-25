@@ -171,9 +171,19 @@ struct DeviceLoginView: View {
         successMessage = nil
         lastStatus = "Avvio..."
         timer?.invalidate()
+
+        let missingKeys = Config.missingOAuthKeys(for: service.serviceName)
+        guard missingKeys.isEmpty else {
+            errorMessage = "Configurazione OAuth mancante: \(missingKeys.joined(separator: ", "))."
+            isLoading = false
+            return
+        }
+
         Task {
             do {
-                let info = try await service.startDeviceAuth()
+                let info = try await withTimeout(seconds: 20) {
+                    try await service.startDeviceAuth()
+                }
                 await MainActor.run {
                     self.authInfo = info
                     self.isLoading = false
@@ -187,6 +197,29 @@ struct DeviceLoginView: View {
                     self.isLoading = false
                 }
             }
+        }
+    }
+
+
+    private func withTimeout<T>(seconds: UInt64, operation: @escaping () async throws -> T)
+        async throws -> T
+    {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: seconds * 1_000_000_000)
+                throw URLError(.timedOut)
+            }
+
+            let firstCompleted = try await group.next()
+            group.cancelAll()
+
+            guard let result = firstCompleted else {
+                throw URLError(.unknown)
+            }
+            return result
         }
     }
 
