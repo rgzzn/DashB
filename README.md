@@ -1,102 +1,66 @@
-# DashB ✨
+# DashB
 
-**DashB** è una dashboard moderna in stile *bento* pensata per trasformare la tua AppleTV in un centro di controllo elegante: meteo, calendario e notizie in un’unica vista pulita e immersiva.  
-Progettata con SwiftUI, ha un look premium, animazioni morbide e un focus sulla leggibilità da lontano.
+DashB trasforma Apple TV in una dashboard TV-first con meteo, calendario e notizie in una singola UI SwiftUI ad alta leggibilità.
 
----
-## ⬇️ Download
-- **Scarica ora da App Store:** https://apps.apple.com/us/app/dashb/id6759085627
-- **Provala in anteprima su TestFlight:** https://testflight.apple.com/join/hBXZH1qd
+## Download
+- App Store: https://apps.apple.com/us/app/dashb/id6759085627
+- TestFlight: https://testflight.apple.com/join/hBXZH1qd
 
----
+## Stato attuale del progetto
+- Piattaforma target corrente: `tvOS` (`TARGETED_DEVICE_FAMILY = 3`)
+- Versione app: `1.0.1` (`CURRENT_PROJECT_VERSION = 2`)
+- Deployment target: `tvOS 18.5`
 
-## 🌟 Highlights
+## Funzionalità principali
+- Dashboard bento con saluto personalizzato, orologio live e animazioni focus ottimizzate per telecomando.
+- Meteo con WeatherKit: condizioni correnti, 4 slot orari e previsioni a 5 giorni.
+- Modalità meteo manuale o posizione attuale (su tvOS viene usata città manuale di default).
+- Fallback meteo/geocoding via Open-Meteo quando WeatherKit o geocoding Apple falliscono.
+- Agenda aggregata Google Calendar + Outlook/Microsoft 365.
+- Vista agenda multi-giorno (finestra prossimi 7 giorni) con eventi timed/all-day e location.
+- Selezione calendari per account con colore personalizzabile per ogni calendario.
+- Notizie RSS con rotazione automatica ogni 10 secondi, immagini e QR code articolo.
+- Gestione fonti RSS da UI (aggiunta/rimozione/ripristino default) con validazione URL HTTPS.
 
-- **Meteo intelligente** con WeatherKit e aggiornamento automatico.
-- **Agenda giornaliera** con eventi da Google Calendar e Microsoft Outlook.
-- **Ticker notizie** da feed RSS locali, con immagini e QR code per leggere l’articolo completo.
-- **Impostazioni rapide** per personalizzare nome, città e account.
-- **Design TV‑friendly** con componenti grandi, contrasto elevato e layout bento.
+## Aggiornamenti automatici
+- Meteo: refresh ogni 15 minuti.
+- RSS: refresh ogni 15 minuti.
+- Calendario: refresh ogni 5 minuti.
 
----
+## Accesso account calendario
+- Autenticazione OAuth Device Flow (Google e Microsoft) con QR code.
+- Polling di conferma con gestione timeout/errori user-friendly.
+- Token salvati in Keychain (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`).
 
-## 🧩 Funzionalità principali
+## Configurazione richiesta
+L’app ora blocca l’avvio dei servizi calendario se mancano chiavi OAuth valide in `Info.plist` e mostra una schermata di configurazione con i campi mancanti.
 
-- **Dashboard centrale** con saluto personalizzato e orologio.
-- **Meteo**: condizioni attuali, previsioni orarie e a 5 giorni.
-- **Agenda**: eventi di giornata, all‑day e con orario.
-- **Notizie**: rotazione automatica, immagini e QR code per aprire al volo le notizie.
-- **Account**: accesso rapido a Google/Outlook con selezione calendari.
+Chiavi richieste:
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `OUTLOOK_CLIENT_ID`
+- `OUTLOOK_TENANT_ID`
 
----
+Note:
+- Placeholder non risolti (es. `$(GOOGLE_CLIENT_ID)`) sono considerati mancanti.
+- WeatherKit richiede entitlement `com.apple.developer.weatherkit`.
 
-## 🛠️ Stack tecnologico
+## Avvio rapido
+```bash
+open DashB.xcodeproj
+```
+1. Apri il progetto in Xcode.
+2. Imposta i valori OAuth nelle Build Settings/Info.plist del target.
+3. Esegui su Apple TV o simulatore tvOS compatibile.
 
-- **SwiftUI** per l’interfaccia
-- **WeatherKit** per il meteo
-- **OAuth Device Flow** per l’accesso a Google e Microsoft
-- **Keychain** per la gestione sicura dei token
-- **RSS** per le notizie
+## Struttura utile
+- `DashB/Core/Config.swift`: validazione chiavi OAuth.
+- `DashB/Services/CalendarManager.swift`: aggregazione eventi e refresh.
+- `DashB/Services/GoogleCalendarService.swift`: OAuth Device Flow Google + API Calendar.
+- `DashB/Services/OutlookCalendarService.swift`: OAuth Device Flow Microsoft + Graph API.
+- `DashB/Models/WeatherModel.swift`: WeatherKit + fallback Open-Meteo.
+- `DashB/Models/RSSModel.swift`: fetch/parsing RSS + enrichment immagini.
+- `DashB/Views/SettingsView.swift`: gestione profilo, meteo, account, RSS.
 
----
-
-## ✅ Requisiti
-
-- **Xcode 15+**
-- **Swift 5.9+**
-- Account **Apple Developer** abilitato a **WeatherKit**
-- Connessione internet attiva
-
----
-
-## 🚀 Avvio rapido
-
-1. Apri il progetto in Xcode:
-   ```bash
-   open DashB.xcodeproj
-   ```
-2. Seleziona il target (iOS, macOS o tvOS compatibile).
-3. Avvia l’app con **Run ▶︎**.
-
----
-
-## ⚙️ Configurazione servizi
-
-### WeatherKit
-L’app utilizza WeatherKit. Assicurati che l’entitlement sia attivo e che il profilo di provisioning includa **com.apple.developer.weatherkit**.
-
-### Google Calendar / Outlook
-Le integrazioni usano il **Device Flow** OAuth.  
-Per produzione è consigliato sostituire le credenziali presenti nei servizi con le proprie:
-
-- `DashB/Services/GoogleCalendarService.swift`
-- `DashB/Services/OutlookCalendarService.swift`
-
----
-
-## 📰 Fonti notizie (RSS)
-Le fonti sono configurate nel modello RSS e possono essere personalizzate:
-
-- `DashB/Models/RSSModel.swift`
-
----
-
-## 🗺️ Roadmap (idee)
-
-- Widget configurabili (musica, traffico, To‑Do)
-- Modalità *focus* per fullscreen content
-- Tema chiaro/scuro automatico
-
----
-
-
-## 👤 Autore
-
-Creato da **Luca Ragazzini**.
-
----
-
-Se vuoi migliorare DashB o contribuire, sei il benvenuto! 💙
-
-## 🔐 Privacy
-Per dettagli su dati trattati, finalità e retention locale: `PRIVACY.md`.
+## Autore
+Creato da Luca Ragazzini.
