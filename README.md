@@ -1,5 +1,7 @@
 # DashB
 
+![alt text](https://github.com/rgzzn/DashB/blob/master/DashB/Samples/English/SimulatorEnglishSample_1.png?raw=true)
+
 DashB turns Apple TV into a TV-first dashboard with weather, calendar, and news in a single high-readability SwiftUI interface.
 
 ## Download
