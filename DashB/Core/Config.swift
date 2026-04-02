@@ -50,7 +50,7 @@ enum Config {
         switch serviceName {
         case "Google Calendar":
             return missing([.googleClientID, .googleClientSecret])
-        case "Outlook Calendar":
+        case "Outlook Calendar", "Outlook / Microsoft 365":
             return missing([.outlookClientID, .outlookTenantID])
         default:
             return missingOAuthKeys

@@ -20,7 +20,8 @@ struct DeviceLoginView: View {
     @State private var successMessage: String?
     @State private var timeRemaining: Int = 0
     @State private var timer: Timer?
-    @State private var lastStatus: String = "Preparazione..."
+    @State private var lastStatus: String = L10n.string("deviceLogin.status.preparing")
+    @State private var showContent = false
 
     let context = CIContext()
     let filter = CIFilter.qrCodeGenerator()
@@ -46,6 +47,7 @@ struct DeviceLoginView: View {
                             dismiss()
                         }
                     }
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 } else if let error = errorMessage {
                     ZStack {
                         Color.black.ignoresSafeArea()
@@ -57,7 +59,7 @@ struct DeviceLoginView: View {
                                     .foregroundColor(.yellow)
                                     .accessibilityHidden(true)
 
-                                Text("Attenzione")
+                                Text("deviceLogin.warning")
                                     .font(.system(size: 80, weight: .bold))
                                     .foregroundColor(.white)
 
@@ -69,18 +71,18 @@ struct DeviceLoginView: View {
                                     .fixedSize(horizontal: false, vertical: true)
 
                                 HStack(spacing: 60) {
-                                    Button("Riprova") { startAuth() }
+                                    Button("common.retry") { startAuth() }
                                         .buttonStyle(PremiumButtonStyle())
                                         #if !os(tvOS)
                                             .controlSize(.large)
                                         #endif
-                                        .accessibilityLabel("Riprova autenticazione")
-                                    Button("Annulla") { dismiss() }
+                                        .accessibilityLabel("deviceLogin.accessibility.retryAuth")
+                                    Button("common.cancel") { dismiss() }
                                         .buttonStyle(PremiumButtonStyle())
                                         #if !os(tvOS)
                                             .controlSize(.large)
                                         #endif
-                                        .accessibilityLabel("Chiudi schermata di accesso")
+                                        .accessibilityLabel("deviceLogin.accessibility.closeLogin")
                                 }
                                 .padding(.top, 50)
                             }
@@ -88,12 +90,13 @@ struct DeviceLoginView: View {
                             .frame(maxWidth: .infinity)
                         }
                     }
-                    .transition(.opacity)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 } else if isLoading {
                     VStack(spacing: 40) {
                         ProgressView().scaleEffect(3)
-                        Text("Creazione codice di accesso...").font(.title2)
+                        Text("deviceLogin.loading").font(.title2)
                     }
+                    .transition(.opacity)
                 } else if let info = authInfo {
                     HStack(spacing: 70) {
                         // QR
@@ -107,29 +110,33 @@ struct DeviceLoginView: View {
                                     .background(.white)
                                     .cornerRadius(30)
                                     .accessibilityLabel(
-                                        "Codice QR per collegare \(service.serviceName)"
+                                        L10n.string(
+                                            "deviceLogin.accessibility.qrLabel",
+                                            service.serviceName
+                                        )
                                     )
                                     .accessibilityHint(
-                                        "Apri la fotocamera del telefono e inquadra il codice")
+                                        L10n.string("deviceLogin.accessibility.qrHint")
+                                    )
                             }
-                            Text("Scannerizza ora").font(.headline)
+                            Text("deviceLogin.scanNow").font(.headline)
                         }
 
                         // Istruzioni
                         VStack(alignment: .leading, spacing: 35) {
-                            Text("Connetti \(service.serviceName)")
+                            Text(L10n.string("deviceLogin.connectService", service.serviceName))
                                 .font(.system(size: 56, weight: .bold))
                                 .minimumScaleFactor(0.5)
 
                             VStack(alignment: .leading, spacing: 5) {
-                                Text("DA TELEFONO").font(.caption).foregroundColor(.blue)
+                                Text("deviceLogin.fromPhone").font(.caption).foregroundColor(.blue)
                                     .fontWeight(.black)
                                 Text(info.verificationUri).font(.title3).lineLimit(1)
                                     .minimumScaleFactor(0.7)
                             }
 
                             VStack(alignment: .leading, spacing: 5) {
-                                Text("CODICE").font(.caption).foregroundColor(.blue).fontWeight(
+                                Text("deviceLogin.code").font(.caption).foregroundColor(.blue).fontWeight(
                                     .black)
                                 Text(info.userCode)
                                     .font(.system(size: 100, weight: .black, design: .monospaced))
@@ -145,7 +152,12 @@ struct DeviceLoginView: View {
                                     Text(lastStatus).font(.headline).foregroundColor(
                                         .white.opacity(0.8))
                                 }
-                                Text("Il codice scade tra: \(timeString(from: timeRemaining))")
+                                Text(
+                                    L10n.string(
+                                        "deviceLogin.codeExpiresIn",
+                                        timeString(from: timeRemaining)
+                                    )
+                                )
                                     .font(.caption).foregroundColor(.white.opacity(0.4))
                             }
                             .padding().background(Color.white.opacity(0.05)).cornerRadius(20)
@@ -153,28 +165,41 @@ struct DeviceLoginView: View {
                         }
                         .frame(maxWidth: 700)
                     }
+                    .transition(.opacity.combined(with: .scale(scale: 0.985)))
                 }
 
                 if successMessage == nil && errorMessage == nil {
-                    Button("Chiudi") { dismiss() }.buttonStyle(PremiumButtonStyle()).padding(
+                    Button("common.close") { dismiss() }.buttonStyle(PremiumButtonStyle()).padding(
                         .top, 20)
                 }
             }
             .padding(70).background(.ultraThinMaterial).cornerRadius(60).padding(30)
+            .opacity(showContent ? 1 : 0)
+            .offset(y: showContent ? 0 : 16)
+            .animation(Motion.enter, value: showContent)
         }
-        .onAppear { startAuth() }
+        .onAppear {
+            startAuth()
+            guard !showContent else { return }
+            withAnimation(Motion.enter) {
+                showContent = true
+            }
+        }
     }
 
     private func startAuth() {
         isLoading = true
         errorMessage = nil
         successMessage = nil
-        lastStatus = "Avvio..."
+        lastStatus = L10n.string("deviceLogin.status.starting")
         timer?.invalidate()
 
         let missingKeys = Config.missingOAuthKeys(for: service.serviceName)
         guard missingKeys.isEmpty else {
-            errorMessage = "Configurazione OAuth mancante: \(missingKeys.joined(separator: ", "))."
+            errorMessage = L10n.string(
+                "deviceLogin.error.missingOAuth",
+                missingKeys.joined(separator: ", ")
+            )
             isLoading = false
             return
         }
@@ -229,7 +254,7 @@ struct DeviceLoginView: View {
                 timeRemaining -= 1
             } else {
                 timer?.invalidate()
-                errorMessage = "Il codice è scaduto. Generane uno nuovo per continuare."
+                errorMessage = L10n.string("deviceLogin.error.codeExpired")
             }
         }
     }
@@ -244,13 +269,15 @@ struct DeviceLoginView: View {
         Task {
             while isPolling && timeRemaining > 0 {
                 do {
-                    await MainActor.run { lastStatus = "Passaggio 3: In attesa di conferma..." }
+                    await MainActor.run {
+                        lastStatus = L10n.string("deviceLogin.status.waitingConfirmation")
+                    }
                     let success = try await service.pollForToken(
                         deviceCode: info.deviceCode, interval: 0)
                     if success {
                         await MainActor.run {
                             self.isPolling = false
-                            self.successMessage = "Perfetto! Collegato."
+                            self.successMessage = L10n.string("deviceLogin.success.connected")
                             self.timer?.invalidate()
                             manager.fetchEvents()
                         }
@@ -286,19 +313,18 @@ struct DeviceLoginView: View {
         if let urlError = error as? URLError {
             switch urlError.code {
             case .notConnectedToInternet:
-                return "Connessione internet assente. Controlla la rete e riprova."
+                return L10n.string("deviceLogin.error.noInternet")
             case .timedOut:
-                return "La richiesta sta impiegando troppo tempo. Riprova tra poco."
+                return L10n.string("deviceLogin.error.timeout")
             default:
-                return "Non siamo riusciti ad avviare l'accesso. Riprova."
+                return L10n.string("deviceLogin.error.startFailed")
             }
         }
 
-        return "Accesso non riuscito. Riprova tra qualche istante."
+        return L10n.string("deviceLogin.error.generic")
     }
 }
 #Preview("DeviceLoginView Preview") {
     DeviceLoginView(service: MockCalendarService())
         .environmentObject(CalendarManager())
 }
-

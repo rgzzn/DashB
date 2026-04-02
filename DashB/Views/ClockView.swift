@@ -10,10 +10,11 @@ import SwiftUI
 
 struct ClockView: View {
     @State private var currentTime = Date()
+    @State private var showContent = false
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "it_IT")
+        formatter.locale = .autoupdatingCurrent
         formatter.dateStyle = .full
         formatter.timeStyle = .none
         return formatter
@@ -38,8 +39,19 @@ struct ClockView: View {
                 .font(.system(size: 30, weight: .medium, design: .default))
                 .foregroundColor(.white.opacity(0.9))
                 .shadow(radius: 3)
+                .contentTransition(.opacity)
+                .animation(Motion.calm, value: dateString)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
+        }
+        .opacity(showContent ? 1 : 0)
+        .offset(y: showContent ? 0 : 6)
+        .animation(Motion.enter.delay(0.05), value: showContent)
+        .onAppear {
+            guard !showContent else { return }
+            withAnimation(Motion.enter) {
+                showContent = true
+            }
         }
         .onReceive(timer) { input in
             currentTime = input

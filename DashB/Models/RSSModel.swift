@@ -70,7 +70,8 @@ struct NewsItem: Identifiable, Equatable {
     var imageUrl: String? = nil
 }
 
-struct FeedConfig {
+struct FeedConfig: Codable, Equatable, Identifiable {
+    var id: String { url }
     let url: String
     let source: String
 }
@@ -97,10 +98,16 @@ enum FeedURLValidator {
 @MainActor
 class RSSModel: ObservableObject {
     @Published var newsItems: [NewsItem] = []
+    @Published var feeds: [FeedConfig] {
+        didSet {
+            persistFeeds()
+        }
+    }
 
     private var timer: Timer?
     private let ogImageService = OGImageService()
-    @Published var feeds: [FeedConfig] = [
+    private let feedsDefaultsKey = "RSSModel.savedFeeds"
+    private let defaultFeeds: [FeedConfig] = [
         FeedConfig(
             url: "https://www.ansa.it/emiliaromagna/notizie/emiliaromagna_rss.xml", source: "ANSA"),
         FeedConfig(url: "https://www.forlitoday.it/rss", source: "ForlìToday"),
@@ -112,6 +119,15 @@ class RSSModel: ObservableObject {
     ]
 
     init() {
+        if
+            let data = UserDefaults.standard.data(forKey: feedsDefaultsKey),
+            let decoded = try? JSONDecoder().decode([FeedConfig].self, from: data),
+            !decoded.isEmpty
+        {
+            self.feeds = decoded
+        } else {
+            self.feeds = defaultFeeds
+        }
         fetchNews()
         startTimer()
     }
@@ -222,6 +238,15 @@ class RSSModel: ObservableObject {
     deinit {
         timer?.invalidate()
     }
+
+    func resetToDefaultFeeds() {
+        updateFeeds(defaultFeeds)
+    }
+
+    private func persistFeeds() {
+        guard let data = try? JSONEncoder().encode(feeds) else { return }
+        UserDefaults.standard.set(data, forKey: feedsDefaultsKey)
+    }
 }
 
 // Parser non isolato separato per soddisfare le regole di concorrenza di Swift 6
@@ -246,7 +271,7 @@ class RSSParser: NSObject, XMLParserDelegate {
     private lazy var displayDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE d MMMM, HH:mm"
-        formatter.locale = Locale(identifier: "it_IT")
+        formatter.locale = .autoupdatingCurrent
         return formatter
     }()
 

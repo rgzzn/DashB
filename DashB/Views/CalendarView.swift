@@ -13,7 +13,7 @@ struct CalendarView: View {
     private static let sectionDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE d MMMM"
-        formatter.locale = Locale(identifier: "it_IT")
+        formatter.locale = .autoupdatingCurrent
         return formatter
     }()
 
@@ -27,9 +27,9 @@ struct CalendarView: View {
     private func dateHeader(for date: Date) -> String {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) {
-            return "Oggi"
+            return L10n.string("calendar.day.today")
         } else if calendar.isDateInTomorrow(date) {
-            return "Domani"
+            return L10n.string("calendar.day.tomorrow")
         } else {
             return Self.sectionDateFormatter.string(from: date).capitalized
         }
@@ -41,14 +41,14 @@ struct CalendarView: View {
             HStack {
                 Image(systemName: "calendar")
                     .foregroundColor(.red)
-                Text("Agenda")
+                Text("calendar.title")
                     .font(.headline)
                 Spacer()
             }
             .padding(.bottom, 5)
 
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
+                LazyVStack(alignment: .leading, spacing: 16) {
                     ForEach(Array(groupedEvents.enumerated()), id: \.element.0) { index, entry in
                         let date = entry.0
                         let events = entry.1
@@ -74,6 +74,7 @@ struct CalendarView: View {
                         .padding(.bottom, 10)
                         .opacity(showContent ? 1 : 0)
                         .offset(y: showContent ? 0 : 8)
+                        .scaleEffect(showContent ? 1 : 0.99, anchor: .topLeading)
                         .animation(
                             Motion.enter.delay(Double(index) * 0.05),
                             value: showContent
@@ -86,7 +87,7 @@ struct CalendarView: View {
                             Image(systemName: "calendar.badge.clock")
                                 .font(.system(size: 40))
                                 .foregroundColor(.white.opacity(0.3))
-                            Text("Nessun evento\nin programma")
+                            Text("calendar.empty")
                                 .font(.body)
                                 .foregroundColor(.white.opacity(0.5))
                                 .multilineTextAlignment(.center)
@@ -102,13 +103,15 @@ struct CalendarView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)  // Align top
-        .background(.ultraThinMaterial)
-        .cornerRadius(30)
+        .modifier(CalendarGlassPanel(cornerRadius: 30, tint: .white))
         .opacity(showContent ? 1 : 0)
         .offset(y: showContent ? 0 : 10)
         .animation(Motion.enter, value: showContent)
         .onAppear {
-            showContent = true
+            guard !showContent else { return }
+            withAnimation(Motion.enter) {
+                showContent = true
+            }
         }
     }
 
@@ -134,7 +137,7 @@ struct CalendarView: View {
 
             Spacer()
 
-            Text("tutto il giorno")
+            Text("calendar.allDay")
                 .font(.system(size: 21))
                 .foregroundColor(event.color.opacity(0.8))
                 .lineLimit(1)
@@ -145,7 +148,7 @@ struct CalendarView: View {
         .background(event.color.opacity(0.2))  // Tinted background
         .cornerRadius(8)  // Smaller radius for items
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(event.title), tutto il giorno")
+        .accessibilityLabel(L10n.string("calendar.accessibility.allDay", event.title))
         .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 
@@ -200,15 +203,67 @@ struct CalendarView: View {
         .cornerRadius(8)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(event.title), dalle \(event.startDate.formatted(date: .omitted, time: .shortened)) alle \(event.endDate.formatted(date: .omitted, time: .shortened))"
+            L10n.string(
+                "calendar.accessibility.timed",
+                event.title,
+                event.startDate.formatted(date: .omitted, time: .shortened),
+                event.endDate.formatted(date: .omitted, time: .shortened)
+            )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(event.color.opacity(0.3), lineWidth: 1)  // Optional border for better definition
         )
+        .shadow(color: event.color.opacity(0.12), radius: 12, y: 6)
         .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 }
+
+private struct CalendarGlassPanel: ViewModifier {
+    let cornerRadius: CGFloat
+    let tint: Color
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.05),
+                                .clear,
+                                tint.opacity(0.04),
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .calendarLiquidGlass(cornerRadius: cornerRadius, tint: tint)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .shadow(color: .black.opacity(0.24), radius: 24, y: 12)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func calendarLiquidGlass(cornerRadius: CGFloat, tint: Color) -> some View {
+        if #available(tvOS 26.0, iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *) {
+            self.glassEffect(.regular.tint(tint.opacity(0.1)), in: .rect(cornerRadius: cornerRadius))
+        } else {
+            self
+        }
+    }
+}
+
 #Preview {
     let manager = CalendarManager()
     // Optionally populate with mock events if your model supports it

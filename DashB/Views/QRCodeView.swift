@@ -18,6 +18,7 @@ struct QRCodeView: View {
     let url: URL
     let title: String
     @Environment(\.dismiss) private var dismiss
+    @State private var showContent = false
 
     var body: some View {
         ZStack {
@@ -44,16 +45,26 @@ struct QRCodeView: View {
                         .foregroundColor(.red)
                 }
 
-                Text("Scansiona per aprire sul tuo dispositivo")
+                Text("qr.scanInstruction")
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.7))
 
-                Button("Chiudi") {
+                Button("common.close") {
                     dismiss()
                 }
                 .buttonStyle(PremiumButtonStyle())
             }
             .padding()
+            .opacity(showContent ? 1 : 0)
+            .offset(y: showContent ? 0 : 14)
+            .scaleEffect(showContent ? 1 : 0.985)
+            .animation(Motion.enter, value: showContent)
+        }
+        .onAppear {
+            guard !showContent else { return }
+            withAnimation(Motion.enter) {
+                showContent = true
+            }
         }
     }
 

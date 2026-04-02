@@ -26,7 +26,8 @@ struct SettingsView: View {
     // User Preferences
     @AppStorage("userName") private var userName = "Luca"
     @AppStorage("showGreeting") private var showGreeting = true
-    @AppStorage("weatherCity") private var weatherCity = "Milano"
+    @AppStorage("weatherCity") private var weatherCity = L10n.string("onboarding.weather.cityPreset.milan")
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     // Temp State for Edit
     @State private var showingEditProfile = false
@@ -34,16 +35,23 @@ struct SettingsView: View {
 
     @State private var showingEditWeather = false
     @State private var tempCity = ""
+    @State private var showContent = false
+
+    private var connectedServicesCount: Int {
+        [calendarManager.googleService.isConnected, calendarManager.outlookService.isConnected]
+            .filter { $0 }
+            .count
+    }
 
     @ViewBuilder
     private var quickActions: some View {
-        QuickActionButton(icon: "location.fill", title: "Cambia Città") {
+        QuickActionButton(icon: "location.fill", title: L10n.string("settings.quickAction.changeCity")) {
             tempCity = weatherCity
             showingEditWeather = true
         }
 
         QuickActionButton(
-            icon: "person.crop.circle.badge.plus", title: "Collega Account"
+            icon: "person.crop.circle.badge.plus", title: L10n.string("settings.quickAction.connectAccount")
         ) {
             // Default to Google for quick action, or show sheet
             authServiceItem = AuthServiceItem(
@@ -51,47 +59,41 @@ struct SettingsView: View {
         }
 
         QuickActionButton(
-            icon: "arrow.triangle.2.circlepath", title: "Aggiorna Calendari"
+            icon: "arrow.triangle.2.circlepath", title: L10n.string("settings.quickAction.refreshCalendars")
         ) {
             calendarManager.fetchEvents()
         }
 
         QuickActionButton(
-            icon: "antenna.radiowaves.left.and.right", title: "Aggiorna RSS"
+            icon: "antenna.radiowaves.left.and.right", title: L10n.string("settings.quickAction.refreshRSS")
         ) {
             rssModel.fetchNews()
+        }
+
+        QuickActionButton(
+            icon: "sparkles.rectangle.stack", title: L10n.string("settings.quickAction.reviewTour")
+        ) {
+            hasCompletedOnboarding = false
+            dismiss()
         }
     }
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack {
-                GradientBackgroundView().ignoresSafeArea()
+                GradientBackgroundView()
+                    .overlay {
+                        SettingsAmbientBackdrop()
+                    }
+                    .ignoresSafeArea()
 
                 VStack(alignment: .leading, spacing: 30) {
-                    // Header
-                    HStack {
-                        Text("Impostazioni")
-                            .font(.system(size: 48, weight: .bold))
-                            .foregroundColor(.white)
-
-                        Spacer()
-
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 36))
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.horizontal, 40)
-                    .padding(.top, 40)
+                    settingsHeader
 
                     ScrollView {
                         VStack(spacing: 30) {
-                            // Quick Actions Row
+                            settingsOverview
+
                             ViewThatFits(in: .horizontal) {
                                 HStack(spacing: 20) {
                                     quickActions
@@ -105,89 +107,75 @@ struct SettingsView: View {
                                 }
                             }
                             .padding(.horizontal, 40)
-                            .padding(.vertical, 8)  // Safe margin for hover scale bleeding
+                            .padding(.vertical, 8)
 
-                            // Bento Grid
                             LazyVGrid(
                                 columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 40
                             ) {
                                 // 1. Profilo & Display
                                 SettingsCard(
                                     icon: "person.fill",
-                                    title: "Profilo",
+                                    title: L10n.string("settings.card.profile.title"),
                                     color: .blue
                                 ) {
                                     tempUserName = userName
                                     showingEditProfile = true
                                 } content: {
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Text("Ciao, \(userName)")
-                                            .font(.headline)
-                                            .fontWeight(.bold)
-                                        Text(showGreeting ? "Saluto attivo" : "Saluto nascosto")
-                                            .font(.caption)
-                                            .opacity(0.7)
-                                    }
+                                    SettingsValueStack(
+                                        primary: L10n.string("settings.profile.greeting", userName),
+                                        secondary: showGreeting
+                                            ? L10n.string("settings.profile.greetingEnabled")
+                                            : L10n.string("settings.profile.greetingHidden")
+                                    )
                                 }
 
-                                // 2. Meteo
                                 SettingsCard(
                                     icon: "cloud.sun.fill",
-                                    title: "Meteo",
+                                    title: L10n.string("settings.card.weather.title"),
                                     color: .orange
                                 ) {
                                     tempCity = weatherCity
                                     showingEditWeather = true
                                 } content: {
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Text(weatherCity)
-                                            .font(.headline)
-                                            .fontWeight(.bold)
-                                        Text("Città attuale")
-                                            .font(.caption)
-                                            .opacity(0.7)
-                                    }
+                                    SettingsValueStack(
+                                        primary: weatherCity,
+                                        secondary: L10n.string("settings.weather.currentCity")
+                                    )
                                 }
 
-                                // 3. Agenda (Accounts)
                                 SettingsCard(
                                     icon: "calendar",
-                                    title: "Agenda",
+                                    title: L10n.string("settings.card.agenda.title"),
                                     color: .red
                                 ) {
                                     navigationPath.append(SettingsDestination.agenda)
                                 } content: {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        HStack {
-                                            Circle().fill(
-                                                calendarManager.googleService.isConnected
-                                                    ? Color.green : Color.red
-                                            ).frame(width: 8, height: 8)
-                                            Text("Google")
-                                        }
-                                        HStack {
-                                            Circle().fill(
-                                                calendarManager.outlookService.isConnected
-                                                    ? Color.green : Color.red
-                                            ).frame(width: 8, height: 8)
-                                            Text("Outlook")
-                                        }
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        SettingsStatusRow(
+                                            title: L10n.string("settings.provider.google"),
+                                            isActive: calendarManager.googleService.isConnected
+                                        )
+                                        SettingsStatusRow(
+                                            title: L10n.string("settings.provider.outlook"),
+                                            isActive: calendarManager.outlookService.isConnected
+                                        )
                                     }
-                                    .font(.caption)
-                                    .fontWeight(.medium)
                                 }
 
-                                // 4. Notizie
                                 SettingsCard(
                                     icon: "newspaper.fill",
-                                    title: "Notizie",
+                                    title: L10n.string("settings.card.news.title"),
                                     color: .purple
                                 ) {
                                     navigationPath.append(SettingsDestination.news)
                                 } content: {
-                                    Text("\(rssModel.feeds.count) fonti")
-                                        .font(.headline)
-                                        .fontWeight(.bold)
+                                    SettingsValueStack(
+                                        primary: L10n.string(
+                                            "settings.news.sourcesCount",
+                                            rssModel.feeds.count
+                                        ),
+                                        secondary: L10n.string("settings.news.activeSources")
+                                    )
                                 }
                             }
                             .padding(.horizontal, 40)
@@ -195,6 +183,9 @@ struct SettingsView: View {
                         }
                     }
                 }
+                .opacity(showContent ? 1 : 0)
+                .offset(y: showContent ? 0 : 16)
+                .animation(Motion.enter, value: showContent)
             }
             .navigationDestination(for: SettingsDestination.self) { dest in
                 switch dest {
@@ -219,7 +210,73 @@ struct SettingsView: View {
                 DeviceLoginView(service: item.service)
                     .environmentObject(calendarManager)
             }
+            .onAppear {
+                guard !showContent else { return }
+                withAnimation(Motion.enter) {
+                    showContent = true
+                }
+            }
         }
+    }
+
+    private var settingsHeader: some View {
+        HStack(alignment: .top, spacing: 24) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("settings.title")
+                    .font(.system(size: 58, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text("settings.subtitle")
+                    .font(.system(size: 22, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .frame(maxWidth: 840, alignment: .leading)
+            }
+
+            Spacer()
+
+            Button {
+                dismiss()
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "xmark")
+                    Text("common.close")
+                }
+            }
+            .buttonStyle(SettingsAdaptiveGlassButtonStyle(prominent: false))
+        }
+        .padding(.horizontal, 40)
+        .padding(.top, 40)
+    }
+
+    private var settingsOverview: some View {
+        HStack(spacing: 20) {
+            SettingsHeroPanel(
+                eyebrow: L10n.string("settings.card.profile.title"),
+                title: userName,
+                detail: showGreeting
+                    ? L10n.string("settings.hero.dynamicGreetingEnabled")
+                    : L10n.string("settings.hero.minimalDashboard"),
+                symbol: "person.crop.circle.fill",
+                tint: .cyan
+            )
+
+            SettingsHeroPanel(
+                eyebrow: L10n.string("settings.card.weather.title"),
+                title: weatherCity,
+                detail: weatherModel.conditionDescription,
+                symbol: weatherModel.conditionIcon,
+                tint: .orange
+            )
+
+            SettingsHeroPanel(
+                eyebrow: L10n.string("settings.hero.services"),
+                title: L10n.string("settings.hero.connectedServices", connectedServicesCount),
+                detail: L10n.string("settings.hero.activeRssSources", rssModel.feeds.count),
+                symbol: "dot.radiowaves.left.and.right",
+                tint: .mint
+            )
+        }
+        .padding(.horizontal, 40)
     }
 }
 
@@ -237,22 +294,41 @@ struct QuickActionButton: View {
     let title: String
     let action: () -> Void
 
+    @Environment(\.isFocused) private var isFocused
+
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 Image(systemName: icon)
-                    .font(.headline)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(12)
+                    .background(Color.white.opacity(isFocused ? 0.2 : 0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
                 Text(title)
-                    .font(.caption)
-                    .fontWeight(.bold)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text("settings.quickAction.subtitle")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.58))
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(12)
+            .frame(maxWidth: .infinity, minHeight: 124, alignment: .leading)
+            .padding(18)
+            .modifier(
+                SettingsGlassPanel(
+                    cornerRadius: 22,
+                    tint: isFocused
+                        ? Color.cyan.opacity(0.08) : .clear,
+                    isInteractive: true,
+                    isFocused: isFocused
+                )
+            )
         }
+        .dashBDisableSystemFocusEffect()
         #if os(tvOS)
-            .buttonStyle(.card)
+            .buttonStyle(.plain)
         #else
             .buttonStyle(.plain)
         #endif
@@ -277,36 +353,57 @@ struct SettingsCard<Content: View>: View {
         self.content = content
     }
 
+    @Environment(\.isFocused) private var isFocused
+
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top) {
                     Image(systemName: icon)
-                        .font(.title3)
-                        .foregroundColor(color)
-                        .padding(6)
-                        .background(color.opacity(0.2))
-                        .clipShape(Circle())
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(12)
+                        .background(color.opacity(isFocused ? 0.42 : 0.24))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-                    Text(title)
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white.opacity(0.9))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title)
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.96))
+                        Text("settings.card.openAndEdit")
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.52))
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.52))
                 }
 
-                Divider().background(Color.white.opacity(0.1))
+                Divider().background(Color.white.opacity(0.12))
 
                 content()
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundStyle(.white.opacity(0.82))
+
+                Spacer(minLength: 0)
             }
-            .padding(15)
+            .padding(22)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 180)
-            .background(Color.white.opacity(0.05))
-            .cornerRadius(15)
+            .frame(height: 210)
+            .modifier(
+                SettingsGlassPanel(
+                    cornerRadius: 26,
+                    tint: color.opacity(isFocused ? 0.12 : 0.06),
+                    isInteractive: true,
+                    isFocused: isFocused
+                )
+            )
         }
+        .dashBDisableSystemFocusEffect()
         #if os(tvOS)
-            .buttonStyle(.card)
+            .buttonStyle(.plain)
         #else
             .buttonStyle(.plain)
         #endif
@@ -322,31 +419,38 @@ struct EditProfileSheet: View {
     @State private var tempName: String = ""
 
     var body: some View {
-        VStack(spacing: 30) {
-            Text("Modifica Profilo")
-                .font(.title)
-                .fontWeight(.bold)
+        ZStack {
+            GradientBackgroundView().ignoresSafeArea()
 
-            TextField("Il tuo nome", text: $tempName)
-                .textFieldStyle(PlainTextFieldStyle())
-                .padding()
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(12)
+            VStack(alignment: .leading, spacing: 28) {
+                Text("settings.editProfile.title")
+                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
 
-            Toggle("Mostra Saluto", isOn: $showGreeting)
-                #if os(iOS) || os(macOS) || os(watchOS) || os(visionOS)
-                    .tint(.blue)
-                #else
-                    .toggleStyle(SwitchToggleStyle())
-                #endif
+                TextField("settings.editProfile.namePlaceholder", text: $tempName)
+                    .textFieldStyle(.plain)
+                    .padding()
+                    .modifier(SettingsGlassPanel(cornerRadius: 20))
 
-            Button("Salva") {
-                userName = tempName
-                isPresented = false
+                Toggle("settings.editProfile.showGreeting", isOn: $showGreeting)
+                    #if os(iOS) || os(macOS) || os(watchOS) || os(visionOS)
+                        .tint(.blue)
+                    #else
+                        .toggleStyle(SwitchToggleStyle())
+                    #endif
+                    .padding(.vertical, 8)
+
+                Button("common.save") {
+                    userName = tempName
+                    isPresented = false
+                }
+                .buttonStyle(SettingsAdaptiveGlassButtonStyle(prominent: true))
             }
-            .buttonStyle(PremiumButtonStyle())
+            .padding(50)
+            .frame(maxWidth: 760)
+            .modifier(SettingsGlassPanel(cornerRadius: 30, tint: .white.opacity(0.04)))
+            .padding(40)
         }
-        .padding(50)
         .onAppear { tempName = userName }
     }
 }
@@ -359,60 +463,64 @@ struct EditWeatherSheet: View {
     @State private var tempCity: String = ""
 
     var body: some View {
-        VStack(spacing: 30) {
-            Text("Imposta Meteo")
-                .font(.title)
-                .fontWeight(.bold)
+        ZStack {
+            GradientBackgroundView().ignoresSafeArea()
 
-            TextField("Città (es. Roma)", text: $tempCity)
-                .textFieldStyle(PlainTextFieldStyle())
-                .padding()
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(12)
+            VStack(alignment: .leading, spacing: 30) {
+                Text("settings.editWeather.title")
+                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
 
-            Button("Usa Posizione Attuale") {
-                weatherModel.useCurrentLocation()
-                Task {
-                    // Small delay to allow location update
-                    try? await Task.sleep(nanoseconds: 500_000_000)
-                    await MainActor.run {
-                        tempCity = weatherModel.selectedCity
+                TextField("settings.editWeather.cityPlaceholder", text: $tempCity)
+                    .textFieldStyle(.plain)
+                    .padding()
+                    .modifier(SettingsGlassPanel(cornerRadius: 20))
+
+                Button("settings.editWeather.useCurrentLocation") {
+                    weatherModel.useCurrentLocation()
+                    Task {
+                        try? await Task.sleep(nanoseconds: 500_000_000)
+                        await MainActor.run {
+                            tempCity = weatherModel.selectedCity
+                        }
                     }
                 }
-            }
+                .buttonStyle(SettingsAdaptiveGlassButtonStyle(prominent: false))
 
-            Button("Salva") {
-                city = tempCity
-                weatherModel.updateCity(tempCity)
-                isPresented = false
-            }
-            .buttonStyle(PremiumButtonStyle())
-
-            VStack(spacing: 5) {
-                // Trademark
-                HStack(spacing: 4) {
-                    Text("")
-                    Text("Weather")
+                Button("common.save") {
+                    city = tempCity
+                    weatherModel.updateCity(tempCity)
+                    isPresented = false
                 }
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.6))
+                .buttonStyle(SettingsAdaptiveGlassButtonStyle(prominent: true))
 
-                // Legal Link
-                Button("Legal Attribution") {
-                    showAttributionQR = true
+                VStack(spacing: 5) {
+                    HStack(spacing: 4) {
+                        Text("")
+                        Text("settings.editWeather.appleWeather")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.6))
+
+                    Button("settings.editWeather.legalAttribution") {
+                        showAttributionQR = true
+                    }
+                    .buttonStyle(.plain)
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.5))
+                    .underline()
                 }
-                .buttonStyle(.plain)
-                .font(.caption2)
-                .foregroundColor(.white.opacity(0.5))
-                .underline()
+                .padding(.top, 12)
             }
-            .padding(.top, 20)
+            .padding(50)
+            .frame(maxWidth: 760)
+            .modifier(SettingsGlassPanel(cornerRadius: 30, tint: .white.opacity(0.04)))
+            .padding(40)
         }
-        .padding(50)
         .onAppear { tempCity = city }
         .sheet(isPresented: $showAttributionQR) {
             if let url = URL(string: "https://weatherkit.apple.com/legal-attribution.html") {
-                QRCodeView(url: url, title: "Legal Attribution")
+                QRCodeView(url: url, title: L10n.string("settings.editWeather.legalAttribution"))
             }
         }
     }
@@ -434,39 +542,51 @@ struct AccountsSettingsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Account & Calendari")
-                    .font(.system(size: 38, weight: .bold))
-                Spacer()
-                Button("Chiudi") { dismiss() }
-                    .buttonStyle(PremiumButtonStyle())
-            }
-            .padding(40)
-            .background(Color.black.opacity(0.3))
-
-            ScrollView {
-                VStack(spacing: 30) {
-                    accountRow(
-                        service: calendarManager.googleService,
-                        icon: "g.circle.fill",
-                        color: .red,
-                        title: "Google Calendar",
-                        type: .google
-                    )
-
-                    accountRow(
-                        service: calendarManager.outlookService,
-                        icon: "m.circle.fill",
-                        color: .blue,
-                        title: "Outlook Calendar",
-                        type: .outlook
-                    )
+        ZStack {
+            GradientBackgroundView()
+                .overlay {
+                    SettingsAmbientBackdrop()
                 }
-                .padding(40)
+
+            VStack(spacing: 24) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("settings.accounts.title")
+                            .font(.system(size: 42, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("settings.accounts.subtitle")
+                            .font(.system(size: 19, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.68))
+                    }
+                    Spacer()
+                    Button("common.close") { dismiss() }
+                        .buttonStyle(SettingsAdaptiveGlassButtonStyle(prominent: false))
+                }
+                .padding(.horizontal, 40)
+                .padding(.top, 40)
+
+                ScrollView {
+                    VStack(spacing: 24) {
+                        accountRow(
+                            service: calendarManager.googleService,
+                            icon: "g.circle.fill",
+                            color: .red,
+                            title: L10n.string("settings.accounts.googleCalendar"),
+                            type: .google
+                        )
+
+                        accountRow(
+                            service: calendarManager.outlookService,
+                            icon: "m.circle.fill",
+                            color: .blue,
+                            title: L10n.string("settings.accounts.outlookCalendar"),
+                            type: .outlook
+                        )
+                    }
+                    .padding(40)
+                }
             }
         }
-        .background(GradientBackgroundView().ignoresSafeArea())
         .sheet(item: $authServiceItem) { item in
             DeviceLoginView(service: item.service)
                 .environmentObject(calendarManager)
@@ -495,40 +615,314 @@ struct AccountsSettingsView: View {
         service: any CalendarService, icon: String, color: Color, title: String, type: CalendarType
     ) -> some View {
         HStack(spacing: 20) {
-            Image(systemName: icon)
-                .font(.system(size: 50))
-                .foregroundColor(color)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(color.opacity(0.22))
+                .frame(width: 92, height: 92)
+                .overlay {
+                    Image(systemName: icon)
+                        .font(.system(size: 38, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
 
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(title)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Text(service.isConnected ? "Connesso" : "Non connesso")
-                    .foregroundColor(service.isConnected ? .green : .gray)
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                Text(
+                    service.isConnected
+                        ? L10n.string("settings.accounts.connected")
+                        : L10n.string("settings.accounts.notConnected")
+                )
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundStyle(service.isConnected ? .green : .white.opacity(0.5))
             }
 
             Spacer()
 
-            if service.isConnected {
-                Button("Gestisci") {
-                    showingCalendarSelection = type
-                }
-                .buttonStyle(PremiumButtonStyle())
+            HStack(spacing: 14) {
+                if service.isConnected {
+                    Button("settings.accounts.manage") {
+                        showingCalendarSelection = type
+                    }
+                    .buttonStyle(SettingsAdaptiveGlassButtonStyle(prominent: true))
 
-                Button("Esci") {
-                    service.logout()
+                    Button("settings.accounts.signOut") {
+                        service.logout()
+                    }
+                    .buttonStyle(PremiumButtonStyle(isDestructive: true))
+                } else {
+                    Button("settings.accounts.connect") {
+                        authServiceItem = SettingsView.AuthServiceItem(service: service)
+                    }
+                    .buttonStyle(SettingsAdaptiveGlassButtonStyle(prominent: true))
                 }
-                .buttonStyle(PremiumButtonStyle(isDestructive: true))
-            } else {
-                Button("Connetti") {
-                    authServiceItem = SettingsView.AuthServiceItem(service: service)
-                }
-                .buttonStyle(PremiumButtonStyle())
             }
         }
         .padding(30)
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(20)
+        .modifier(SettingsGlassPanel(cornerRadius: 28, tint: color.opacity(0.08)))
+    }
+}
+
+private struct SettingsAmbientBackdrop: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.cyan.opacity(0.16))
+                .frame(width: 680, height: 680)
+                .blur(radius: 120)
+                .offset(x: -440, y: -250)
+
+            Circle()
+                .fill(Color.blue.opacity(0.14))
+                .frame(width: 560, height: 560)
+                .blur(radius: 100)
+                .offset(x: 540, y: -220)
+        }
+        .ignoresSafeArea()
+    }
+}
+
+private struct SettingsHeroPanel: View {
+    let eyebrow: String
+    let title: String
+    let detail: String
+    let symbol: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 18) {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(tint.opacity(0.22))
+                .frame(width: 74, height: 74)
+                .overlay {
+                    Image(systemName: symbol)
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .modifier(
+                    SettingsGlassPanel(
+                        cornerRadius: 22,
+                        tint: tint.opacity(0.08),
+                        glassTint: tint,
+                        isInteractive: false
+                    )
+                )
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(eyebrow.uppercased())
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.5))
+                Text(title)
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                Text(detail)
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.66))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, minHeight: 128, alignment: .leading)
+        .modifier(
+            SettingsGlassPanel(
+                cornerRadius: 28,
+                tint: tint.opacity(0.08),
+                glassTint: tint,
+                isInteractive: false
+            )
+        )
+    }
+}
+
+private struct SettingsValueStack: View {
+    let primary: String
+    let secondary: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(primary)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.96))
+                .lineLimit(2)
+
+            Text(secondary)
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.58))
+                .lineLimit(2)
+        }
+    }
+}
+
+private struct SettingsStatusRow: View {
+    let title: String
+    let isActive: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(isActive ? Color.green : Color.red)
+                .frame(width: 10, height: 10)
+
+            Text(title)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.88))
+
+            Spacer()
+
+            Text(L10n.string(isActive ? "settings.status.active" : "settings.status.offline"))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.5))
+        }
+    }
+}
+
+private struct SettingsGlassPanel: ViewModifier {
+    let cornerRadius: CGFloat
+    var tint: Color = .clear
+    var glassTint: Color = .white
+    var isInteractive: Bool = false
+    var isFocused: Bool = false
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(baseFillColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(borderColor, lineWidth: isFocused ? 1.8 : 1)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(tint)
+            )
+            .overlay(alignment: .top) {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(isFocused ? 0.28 : 0.18),
+                                Color.white.opacity(0.06),
+                                .clear,
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(isFocused ? 0.08 : 0.05),
+                                .clear,
+                                glassTint.opacity(isFocused ? 0.06 : 0.03),
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .settingsLiquidGlass(
+                cornerRadius: cornerRadius,
+                tint: glassTint,
+                interactive: isInteractive
+            )
+            .scaleEffect(isFocused ? 1.012 : 1)
+            .shadow(color: shadowColor, radius: isFocused ? 32 : 28, y: isFocused ? 14 : 12)
+            .animation(Motion.focus, value: isFocused)
+    }
+
+    private var baseFillColor: Color {
+        if isFocused {
+            return Color(red: 0.12, green: 0.17, blue: 0.26).opacity(0.88)
+        }
+        return Color.white.opacity(0.06)
+    }
+
+    private var borderColor: Color {
+        if isFocused {
+            return Color.cyan.opacity(0.55)
+        }
+        return Color.white.opacity(0.12)
+    }
+
+    private var shadowColor: Color {
+        if isFocused {
+            return Color.cyan.opacity(0.12)
+        }
+        return Color.black.opacity(0.22)
+    }
+}
+
+private struct SettingsAdaptiveGlassButtonStyle: PrimitiveButtonStyle {
+    let prominent: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        SettingsAdaptiveGlassButtonLabel(
+            configuration: configuration,
+            prominent: prominent
+        )
+    }
+}
+
+private struct SettingsAdaptiveGlassButtonLabel: View {
+    let configuration: PrimitiveButtonStyleConfiguration
+    let prominent: Bool
+
+    var body: some View {
+        if #available(tvOS 26.0, iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *) {
+            if prominent {
+                Button(role: nil, action: configuration.trigger) {
+                    configuration.label
+                }
+                .buttonStyle(GlassProminentButtonStyle())
+            } else {
+                Button(role: nil, action: configuration.trigger) {
+                    configuration.label
+                }
+                .buttonStyle(GlassButtonStyle())
+            }
+        } else {
+            Button(role: nil, action: configuration.trigger) {
+                configuration.label
+            }
+            .buttonStyle(PremiumButtonStyle())
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func settingsLiquidGlass(cornerRadius: CGFloat, tint: Color = .white, interactive: Bool = false)
+        -> some View
+    {
+        if #available(tvOS 26.0, iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *) {
+            self.glassEffect(
+                interactive
+                    ? .regular.tint(tint.opacity(0.18)).interactive()
+                    : .regular.tint(tint.opacity(0.1)),
+                in: .rect(cornerRadius: cornerRadius)
+            )
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func dashBDisableSystemFocusEffect() -> some View {
+        if #available(tvOS 17.0, iOS 17.0, macOS 14.0, visionOS 1.0, watchOS 10.0, *) {
+            self
+                .focusEffectDisabled()
+                .hoverEffectDisabled(true)
+        } else {
+            self
+        }
     }
 }
 

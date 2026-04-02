@@ -6,3 +6,4 @@ DerivedData/
 
 # Secrets
 Secrets.xcconfig
+DashB/Config/Secrets.xcconfig

@@ -170,27 +170,27 @@ class CalendarManager: ObservableObject {
                 let allDayEnd = cal.date(byAdding: .day, value: 1, to: allDayStart) ?? allDayStart
 
                 let mockToday = DashboardEvent(
-                    title: "Riunione di allineamento",
+                    title: L10n.string("calendar.mock.event.alignmentMeeting"),
                     startDate: startToday,
                     endDate: endToday,
-                    location: "Sala A / Teams",
+                    location: L10n.string("calendar.mock.location.roomATeams"),
                     color: .red,
                     calendarID: "mock",
                     isAllDay: false
                 )
 
                 let mockTomorrow = DashboardEvent(
-                    title: "Revisione progetto",
+                    title: L10n.string("calendar.mock.event.projectReview"),
                     startDate: startTomorrow,
                     endDate: endTomorrow,
-                    location: "Sala Riunioni",
+                    location: L10n.string("calendar.mock.location.meetingRoom"),
                     color: .blue,
                     calendarID: "mock",
                     isAllDay: false
                 )
 
                 let mockAllDay = DashboardEvent(
-                    title: "Focus Day",
+                    title: L10n.string("calendar.mock.event.focusDay"),
                     startDate: allDayStart,
                     endDate: allDayEnd,
                     location: nil,
@@ -263,13 +263,13 @@ struct CalendarManagerPreviewView: View {
                     Section {
                         HStack {
                             ProgressView()
-                            Text("Aggiornamento eventi…")
+                            Text("calendar.preview.updatingEvents")
                         }
                     }
                 }
-                Section("Prossimi eventi") {
+                Section("calendar.preview.upcomingEvents") {
                     if manager.upcomingEvents.isEmpty {
-                        Text("Nessun evento in arrivo")
+                        Text("calendar.preview.noUpcomingEvents")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(manager.upcomingEvents.indices, id: \.self) { idx in
@@ -296,7 +296,7 @@ struct CalendarManagerPreviewView: View {
                     }
                 }
             }
-            .navigationTitle("Anteprima Calendario")
+            .navigationTitle("calendar.preview.title")
         }
     }
 }
@@ -304,4 +304,3 @@ struct CalendarManagerPreviewView: View {
 #Preview("CalendarManager Preview") {
     CalendarManagerPreviewView()
 }
-

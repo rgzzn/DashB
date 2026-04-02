@@ -445,7 +445,12 @@ class OutlookCalendarService: NSObject, CalendarService {
             }
             throw NSError(
                 domain: "Outlook", code: httpResponse.statusCode,
-                userInfo: [NSLocalizedDescriptionKey: "Errore Outlook \(httpResponse.statusCode)"])
+                userInfo: [
+                    NSLocalizedDescriptionKey: L10n.string(
+                        "outlook.error.statusCode",
+                        httpResponse.statusCode
+                    )
+                ])
         }
 
         return false
@@ -462,4 +467,3 @@ class OutlookCalendarService: NSObject, CalendarService {
         return code == "InvalidAuthenticationToken" || code == "AuthenticationError"
     }
 }
-

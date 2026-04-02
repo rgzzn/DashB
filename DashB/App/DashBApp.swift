@@ -38,18 +38,16 @@ private struct ConfigurationErrorView: View {
             GradientBackgroundView().ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 20) {
-                Text("Configurazione incompleta")
+                Text("app.config.title")
                     .font(.system(size: 54, weight: .bold))
                     .foregroundStyle(.white)
 
-                Text(
-                    "L'app non può avviare i servizi calendario perché mancano alcune chiavi OAuth in Info.plist."
-                )
-                .font(.title3)
-                .foregroundStyle(.white.opacity(0.9))
+                Text("app.config.description")
+                    .font(.title3)
+                    .foregroundStyle(.white.opacity(0.9))
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Chiavi mancanti:")
+                    Text("app.config.missingKeys")
                         .font(.headline)
                         .foregroundStyle(.white)
 
@@ -64,7 +62,7 @@ private struct ConfigurationErrorView: View {
                 .background(.white.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 20))
 
-                Text("Aggiungi le chiavi mancanti e riavvia l'app.")
+                Text("app.config.footer")
                     .font(.headline)
                     .foregroundStyle(.white.opacity(0.85))
             }

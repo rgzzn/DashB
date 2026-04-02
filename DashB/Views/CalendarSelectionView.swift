@@ -15,6 +15,7 @@ struct CalendarSelectionView<Service: CalendarService>: View {
     @State private var availableCalendars: [CalendarInfo] = []
     @State private var isLoading = true
     @State private var errorMsg: String?
+    @State private var showContent = false
 
     let basicColors = [
         "#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#007AFF", "#5856D6", "#AF52DE",
@@ -34,7 +35,7 @@ struct CalendarSelectionView<Service: CalendarService>: View {
 
                 if isLoading {
                     Spacer()
-                    ProgressView("Caricamento calendari...")
+                    ProgressView("calendarSelection.loading")
                         .tint(.white)
                     Spacer()
                 } else if let error = errorMsg {
@@ -44,9 +45,9 @@ struct CalendarSelectionView<Service: CalendarService>: View {
                             .foregroundColor(.red)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 30)
-                        Button("Riprova") { loadCalendars() }
+                        Button("common.retry") { loadCalendars() }
                             .buttonStyle(CalendarSubmenuButtonStyle(prominent: true))
-                            .accessibilityLabel("Riprova caricamento calendari")
+                            .accessibilityLabel("calendarSelection.accessibility.retryLoading")
                     }
                     Spacer()
                 } else {
@@ -61,7 +62,11 @@ struct CalendarSelectionView<Service: CalendarService>: View {
                                             Text(cal.name)
                                                 .font(.system(size: 24, weight: .bold, design: .rounded))
                                                 .foregroundStyle(.white)
-                                            Text(isSelected ? "Visibile in dashboard" : "Non attivo")
+                                            Text(
+                                                isSelected
+                                                    ? L10n.string("calendarSelection.visible")
+                                                    : L10n.string("calendarSelection.inactive")
+                                            )
                                                 .font(.system(size: 14, weight: .medium, design: .rounded))
                                                 .foregroundStyle(.white.opacity(0.56))
                                         }
@@ -88,7 +93,12 @@ struct CalendarSelectionView<Service: CalendarService>: View {
                                             )
                                         )
                                         .toggleStyle(.switch)
-                                        .accessibilityLabel("Seleziona calendario \(cal.name)")
+                                        .accessibilityLabel(
+                                            L10n.string(
+                                                "calendarSelection.accessibility.selectCalendar",
+                                                cal.name
+                                            )
+                                        )
                                     }
 
                                     if isSelected {
@@ -117,7 +127,13 @@ struct CalendarSelectionView<Service: CalendarService>: View {
                                                         .shadow(radius: isCurrent ? 7 : 0)
                                                 }
                                                 .buttonStyle(ColorButtonStyle())
-                                                .accessibilityLabel("Colore \(hex) per \(cal.name)")
+                                                .accessibilityLabel(
+                                                    L10n.string(
+                                                        "calendarSelection.accessibility.colorForCalendar",
+                                                        hex,
+                                                        cal.name
+                                                    )
+                                                )
                                             }
                                         }
                                         .padding(.vertical, 10)
@@ -136,24 +152,33 @@ struct CalendarSelectionView<Service: CalendarService>: View {
                     }
                 }
             }
+            .opacity(showContent ? 1 : 0)
+            .offset(y: showContent ? 0 : 14)
+            .animation(Motion.enter, value: showContent)
         }
-        .onAppear { loadCalendars() }
+        .onAppear {
+            loadCalendars()
+            guard !showContent else { return }
+            withAnimation(Motion.enter) {
+                showContent = true
+            }
+        }
     }
 
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Seleziona Calendari")
+                Text("calendarSelection.title")
                     .font(.system(size: 46, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                Text("Attiva i calendari visibili nella dashboard e assegna un colore a ciascuno.")
+                Text("calendarSelection.subtitle")
                     .font(.system(size: 20, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.68))
             }
 
             Spacer()
 
-            Button("Fatto") { dismiss() }
+            Button("common.done") { dismiss() }
                 .buttonStyle(CalendarSubmenuButtonStyle(prominent: false))
         }
         .padding(.horizontal, 40)
@@ -193,14 +218,14 @@ struct CalendarSelectionView<Service: CalendarService>: View {
         if let urlError = error as? URLError {
             switch urlError.code {
             case .notConnectedToInternet:
-                return "Connessione assente. Controlla la rete e riprova."
+                return L10n.string("calendarSelection.error.noInternet")
             case .timedOut:
-                return "Il servizio calendari non risponde in tempo. Riprova tra poco."
+                return L10n.string("calendarSelection.error.timeout")
             default:
-                return "Impossibile caricare i calendari in questo momento."
+                return L10n.string("calendarSelection.error.generic")
             }
         }
-        return "Impossibile caricare i calendari in questo momento."
+        return L10n.string("calendarSelection.error.generic")
     }
 }
 
@@ -374,9 +399,9 @@ final class MockCalendarService: ObservableObject, CalendarService {
 
     func fetchAvailableCalendars() async throws -> [CalendarInfo] {
         [
-            CalendarInfo(id: "1", name: "Personale", colorHex: "#FF3B30"),
-            CalendarInfo(id: "2", name: "Lavoro", colorHex: "#34C759"),
-            CalendarInfo(id: "3", name: "Progetti", colorHex: "#007AFF"),
+            CalendarInfo(id: "1", name: L10n.string("calendarSelection.mock.personal"), colorHex: "#FF3B30"),
+            CalendarInfo(id: "2", name: L10n.string("calendarSelection.mock.work"), colorHex: "#34C759"),
+            CalendarInfo(id: "3", name: L10n.string("calendarSelection.mock.projects"), colorHex: "#007AFF"),
         ]
     }
 

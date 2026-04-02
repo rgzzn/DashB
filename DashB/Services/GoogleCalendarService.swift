@@ -97,7 +97,7 @@ class GoogleCalendarService: NSObject, CalendarService {
                 let desc = json["error_description"] as? String ?? error
                 throw NSError(
                     domain: "Google", code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "Errore Google: \(desc)"])
+                    userInfo: [NSLocalizedDescriptionKey: L10n.string("google.error.prefix", desc)])
             }
         }
         throw URLError(.cannotParseResponse)

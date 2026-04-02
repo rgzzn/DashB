@@ -40,6 +40,9 @@ struct WeatherView: View {
             weatherContent
                 .padding(24)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .opacity(showContent ? 1 : 0)
+                .offset(y: showContent ? 0 : 8)
+                .animation(Motion.enter, value: showContent)
         }
         .clipShape(panelShape)
         .shadow(color: .black.opacity(0.24), radius: 24, y: 12)
@@ -64,8 +67,8 @@ struct WeatherView: View {
     private var currentConditions: some View {
         HStack(alignment: .top) {
             Image(systemName: model.conditionIcon)
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 60, height: 60)
+                .font(.system(size: 72, weight: .regular))
+                .frame(width: 84, height: 84)
                 .symbolRenderingMode(.multicolor)
                 .contentTransition(.symbolEffect(.replace))
                 .shadow(color: .yellow.opacity(0.3), radius: 10)
@@ -87,14 +90,11 @@ struct WeatherView: View {
             }
         }
         .padding(.bottom, 10)
-        .opacity(showContent ? 1 : 0)
-        .offset(y: showContent ? 0 : 8)
-        .animation(Motion.enter.delay(0.05), value: showContent)
     }
 
     private var hourlySection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Prossime ore")
+            Text("weather.section.hourly")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(.white.opacity(0.8))
@@ -116,21 +116,17 @@ struct WeatherView: View {
                             .foregroundColor(.white)
                     }
                     .frame(minWidth: 40)
-                    .opacity(showContent ? 1 : 0)
-                    .offset(y: showContent ? 0 : 10)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(Motion.enter.delay(0.14 + (Double(index) * 0.03)), value: showContent)
                 }
             }
         }
-        .opacity(showContent ? 1 : 0)
-        .offset(y: showContent ? 0 : 10)
-        .animation(Motion.enter.delay(0.12), value: showContent)
+        .transaction { transaction in
+            transaction.animation = nil
+        }
     }
 
     private var dailySection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Previsioni a 5 giorni")
+            Text("weather.section.daily")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(.white.opacity(0.8))
@@ -165,16 +161,12 @@ struct WeatherView: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     }
-                    .opacity(showContent ? 1 : 0)
-                    .offset(y: showContent ? 0 : 12)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(Motion.enter.delay(0.2 + (Double(index) * 0.035)), value: showContent)
                 }
             }
         }
-        .opacity(showContent ? 1 : 0)
-        .offset(y: showContent ? 0 : 12)
-        .animation(Motion.enter.delay(0.2), value: showContent)
+        .transaction { transaction in
+            transaction.animation = nil
+        }
     }
 }
 

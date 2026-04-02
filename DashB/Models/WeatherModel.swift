@@ -43,36 +43,23 @@ class WeatherModel: NSObject, ObservableObject {
     private static let cityDefaultsKey = "WeatherModel.selectedCity"
     private static let useManualCityDefaultsKey = "WeatherModel.useManualCity"
     private let geocoder = CLGeocoder()
-    private let defaultCity = "Forlì"
+    private var defaultCity: String { L10n.string("weather.defaultCity") }
     private var cachedManualCity: String?
     private var cachedManualLocation: CLLocation?
     private var cachedManualCityName: String?
+    private var latestWeatherRequestID: UInt64 = 0
 
     private static let hourFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "it_IT")
+        formatter.locale = .autoupdatingCurrent
         formatter.dateFormat = "HH:mm"
         return formatter
     }()
 
     private static let dayFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "it_IT")
+        formatter.locale = .autoupdatingCurrent
         formatter.dateFormat = "EE"
-        return formatter
-    }()
-
-    private static let openMeteoInputFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter
-    }()
-
-    private static let openMeteoDayInputFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "it_IT")
-        formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
 
@@ -81,10 +68,10 @@ class WeatherModel: NSObject, ObservableObject {
     @Published var conditionDescription: String = "--"
     @Published var hourlyForecast: [Forecast] = []
     @Published var dailyForecast: [DailyForecast] = []
-    @Published var cityName: String = "Caricamento..."
+    @Published var cityName: String = L10n.string("weather.city.loading")
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
-    @Published var weatherAdvice: String = "Bentornato nella tua dashboard."
+    @Published var weatherAdvice: String = L10n.string("weather.advice.default")
 
     private var timer: Timer?
     private let weatherService = WeatherService.shared
@@ -149,8 +136,8 @@ class WeatherModel: NSObject, ObservableObject {
                             self.cityName = cityQuery.capitalized
                             self.currentTemp = "--°"
                             self.conditionIcon = "exclamationmark.magnifyingglass"
-                            self.conditionDescription = "Città non trovata"
-                            self.weatherAdvice = "Controlla il nome della città."
+                            self.conditionDescription = L10n.string("weather.city.notFound")
+                            self.weatherAdvice = L10n.string("weather.city.checkName")
                             self.hourlyForecast = []
                             self.dailyForecast = []
                         }
@@ -177,8 +164,8 @@ class WeatherModel: NSObject, ObservableObject {
                         self.cityName = cityQuery.capitalized
                         self.currentTemp = "--°"
                         self.conditionIcon = "exclamationmark.magnifyingglass"
-                        self.conditionDescription = "Città non trovata"
-                        self.weatherAdvice = "Controlla il nome della città."
+                        self.conditionDescription = L10n.string("weather.city.notFound")
+                        self.weatherAdvice = L10n.string("weather.city.checkName")
                         self.hourlyForecast = []
                         self.dailyForecast = []
                     }
@@ -197,7 +184,7 @@ class WeatherModel: NSObject, ObservableObject {
             // Controlla prima i permessi
             switch locationManager.authorizationStatus {
             case .denied, .restricted:
-                self.cityName = "Permessi Geoloc. Negati"
+                self.cityName = L10n.string("weather.location.permissionDenied")
                 await fetchDefaultCityWeather()
                 return
             case .notDetermined:
@@ -206,7 +193,7 @@ class WeatherModel: NSObject, ObservableObject {
                     return
                 #else
                     // In attesa dell'utente...
-                    self.cityName = "In attesa di permessi..."
+                    self.cityName = L10n.string("weather.location.waitingPermission")
                     locationManager.requestWhenInUseAuthorization()
                     return
                 #endif
@@ -215,7 +202,7 @@ class WeatherModel: NSObject, ObservableObject {
             }
 
             guard let location = await currentLocation() else {
-                self.cityName = "Posizione non trovata"
+                self.cityName = L10n.string("weather.location.notFound")
                 await fetchDefaultCityWeather()
                 return
             }
@@ -224,7 +211,7 @@ class WeatherModel: NSObject, ObservableObject {
             if let name = await reverseGeocodeLocation(location) {
                 self.cityName = name
             } else {
-                self.cityName = "Posizione Attuale"
+                self.cityName = L10n.string("weather.location.current")
             }
 
             await fetchWeather(for: location)
@@ -305,8 +292,18 @@ class WeatherModel: NSObject, ObservableObject {
         }
     }
 
+    private func nextWeatherRequestID() -> UInt64 {
+        latestWeatherRequestID &+= 1
+        return latestWeatherRequestID
+    }
+
+    private func isLatestWeatherRequest(_ requestID: UInt64) -> Bool {
+        requestID == latestWeatherRequestID
+    }
+
     // MARK: - Meteo
     private func fetchWeather(for location: CLLocation) async {
+        let requestID = nextWeatherRequestID()
         // Sanitizza posizione: crea un oggetto pulito con solo coordinate per evitare problemi di metadati geocoder
         let cleanLocation = CLLocation(
             latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
@@ -319,10 +316,10 @@ class WeatherModel: NSObject, ObservableObject {
 
                 // Condizioni attuali
                 let tempC = current.temperature.converted(to: .celsius).value
-                self.currentTemp = String(format: "%.0f°", tempC)
-                self.conditionIcon = sfSymbol(for: current.symbolName)
-                self.conditionDescription = self.descriptionForCondition(current.condition)
-                self.weatherAdvice = self.adviceForCondition(current.condition)
+                let currentTemp = String(format: "%.0f°", tempC)
+                let conditionIcon = sfSymbol(for: current.symbolName)
+                let conditionDescription = self.descriptionForCondition(current.condition)
+                let weatherAdvice = self.adviceForCondition(current.condition)
 
                 // Previsioni orarie (prossime 4 voci)
                 var items: [Forecast] = []
@@ -331,7 +328,7 @@ class WeatherModel: NSObject, ObservableObject {
                 for (index, hour) in hours.enumerated() {
                     let label: String
                     if index == 0 {
-                        label = "Ora"
+                        label = L10n.string("weather.hour.now")
                     } else {
                         label = Self.hourFormatter.string(from: hour.date)
                     }
@@ -340,7 +337,6 @@ class WeatherModel: NSObject, ObservableObject {
                     items.append(
                         Forecast(time: label, icon: icon, temp: String(format: "%.0f°", t)))
                 }
-                self.hourlyForecast = items
 
                 // Previsioni giornaliere (prossimi 5 giorni)
                 var dailyItems: [DailyForecast] = []
@@ -356,17 +352,24 @@ class WeatherModel: NSObject, ObservableObject {
                             day: label, icon: icon, tempHigh: String(format: "%.0f°", high),
                             tempLow: String(format: "%.0f°", low)))
                 }
+
+                guard isLatestWeatherRequest(requestID) else { return }
+                self.currentTemp = currentTemp
+                self.conditionIcon = conditionIcon
+                self.conditionDescription = conditionDescription
+                self.weatherAdvice = weatherAdvice
+                self.hourlyForecast = items
                 self.dailyForecast = dailyItems
             } else {
                 let weather = try await weatherService.weather(for: cleanLocation)
 
                 // Current conditions
                 let tempC = weather.currentWeather.temperature.converted(to: .celsius).value
-                self.currentTemp = String(format: "%.0f°", tempC)
-                self.conditionIcon = sfSymbol(for: weather.currentWeather.symbolName)
-                self.conditionDescription = self.descriptionForCondition(
+                let currentTemp = String(format: "%.0f°", tempC)
+                let conditionIcon = sfSymbol(for: weather.currentWeather.symbolName)
+                let conditionDescription = self.descriptionForCondition(
                     weather.currentWeather.condition)
-                self.weatherAdvice = self.adviceForCondition(weather.currentWeather.condition)
+                let weatherAdvice = self.adviceForCondition(weather.currentWeather.condition)
 
                 // Hourly forecast (next 4 entries)
                 var items: [Forecast] = []
@@ -375,7 +378,7 @@ class WeatherModel: NSObject, ObservableObject {
                 for (index, hour) in hours.enumerated() {
                     let label: String
                     if index == 0 {
-                        label = "Ora"
+                        label = L10n.string("weather.hour.now")
                     } else {
                         label = Self.hourFormatter.string(from: hour.date)
                     }
@@ -384,7 +387,6 @@ class WeatherModel: NSObject, ObservableObject {
                     items.append(
                         Forecast(time: label, icon: icon, temp: String(format: "%.0f°", t)))
                 }
-                self.hourlyForecast = items
 
                 // Daily forecast (next 5 days)
                 var dailyItems: [DailyForecast] = []
@@ -400,14 +402,22 @@ class WeatherModel: NSObject, ObservableObject {
                             day: label, icon: icon, tempHigh: String(format: "%.0f°", high),
                             tempLow: String(format: "%.0f°", low)))
                 }
+
+                guard isLatestWeatherRequest(requestID) else { return }
+                self.currentTemp = currentTemp
+                self.conditionIcon = conditionIcon
+                self.conditionDescription = conditionDescription
+                self.weatherAdvice = weatherAdvice
+                self.hourlyForecast = items
                 self.dailyForecast = dailyItems
             }
         } catch {
+            guard isLatestWeatherRequest(requestID) else { return }
             print("Weather fetch failed: \(error)")
-            self.currentTemp = "Err"
+            self.currentTemp = L10n.string("weather.error.short")
             self.conditionIcon = "exclamationmark.triangle.fill"
-            self.conditionDescription = "Errore"
-            self.weatherAdvice = "Impossibile recuperare il meteo."
+            self.conditionDescription = L10n.string("weather.error.title")
+            self.weatherAdvice = L10n.string("weather.error.unavailable")
 
             self.cityName = userFacingWeatherErrorMessage(for: error)
             #if targetEnvironment(simulator)
@@ -416,10 +426,9 @@ class WeatherModel: NSObject, ObservableObject {
             #endif
             #if os(tvOS)
                 // Su tvOS, ripiego su Open-Meteo se WeatherKit fallisce per mostrare comunque dati reali
-                await fetchWeatherFromOpenMeteo(for: cleanLocation)
-                if self.cityName.hasPrefix("Err")
-                    || self.cityName.localizedCaseInsensitiveContains("Capab")
-                {
+                await fetchWeatherFromOpenMeteo(for: cleanLocation, requestID: requestID)
+                guard isLatestWeatherRequest(requestID) else { return }
+                if self.cityName == userFacingWeatherErrorMessage(for: error) {
                     // Mantieni etichetta città precedente se avevamo impostato un errore
                     self.cityName = previousCityName
                 }
@@ -429,15 +438,15 @@ class WeatherModel: NSObject, ObservableObject {
 
     private func userFacingWeatherErrorMessage(for error: Error) -> String {
         if error is WeatherError {
-            return "Servizio meteo non disponibile"
+            return L10n.string("weather.error.serviceUnavailable")
         }
 
         if let urlError = error as? URLError {
             switch urlError.code {
             case .notConnectedToInternet, .timedOut, .cannotFindHost, .cannotConnectToHost:
-                return "Errore di rete"
+                return L10n.string("weather.error.network")
             default:
-                return "Connessione non disponibile"
+                return L10n.string("weather.error.connectionUnavailable")
             }
         }
 
@@ -445,10 +454,10 @@ class WeatherModel: NSObject, ObservableObject {
         if technicalDescription.localizedCaseInsensitiveContains("WeatherDaemon")
             || technicalDescription.localizedCaseInsensitiveContains("connection")
         {
-            return "Servizio meteo momentaneamente non raggiungibile"
+            return L10n.string("weather.error.temporarilyUnavailable")
         }
 
-        return "Errore meteo temporaneo"
+        return L10n.string("weather.error.temporary")
     }
 
     private func sfSymbol(for symbolName: String) -> String {
@@ -459,14 +468,14 @@ class WeatherModel: NSObject, ObservableObject {
     private func fetchDefaultCityWeather() async {
         #if os(tvOS)
             let location = CLLocation(latitude: 44.2225, longitude: 12.0408)
-            self.cityName = "Forlì"
+            self.cityName = defaultCity
             await fetchWeather(for: location)
         #else
             if let (location, name) = await geocodeCityName(defaultCity) {
                 self.cityName = name
                 await fetchWeather(for: location)
             } else {
-                self.cityName = "Città di default non disponibile"
+                self.cityName = L10n.string("weather.error.defaultCityUnavailable")
                 #if targetEnvironment(simulator)
                     self.applyMockWeather()
                 #endif
@@ -479,8 +488,8 @@ class WeatherModel: NSObject, ObservableObject {
             // Provide mock data for development when WeatherKit isn't available (e.g., missing capability on Simulator)
             self.currentTemp = "21°"
             self.conditionIcon = "cloud.sun.fill"
-            self.conditionDescription = "Soleggiato"
-            self.weatherAdvice = "Goditi questa bella giornata di sole!"
+            self.conditionDescription = L10n.string("weather.condition.sunny")
+            self.weatherAdvice = L10n.string("weather.advice.sunny")
             let now = Date()
             let times = [
                 now, now.addingTimeInterval(3600), now.addingTimeInterval(7200),
@@ -488,7 +497,8 @@ class WeatherModel: NSObject, ObservableObject {
             ]
             var items: [Forecast] = []
             for (index, t) in times.enumerated() {
-                let label = index == 0 ? "Ora" : Self.hourFormatter.string(from: t)
+                let label =
+                    index == 0 ? L10n.string("weather.hour.now") : Self.hourFormatter.string(from: t)
                 let icon = index % 2 == 0 ? "cloud.sun.fill" : "cloud.fill"
                 let temp = 20 + index
                 items.append(Forecast(time: label, icon: icon, temp: String(format: "%d°", temp)))
@@ -509,8 +519,8 @@ class WeatherModel: NSObject, ObservableObject {
                         day: dayLabel, icon: icon, tempHigh: "\(high)°", tempLow: "\(low)°"))
             }
             self.dailyForecast = dailyItems
-            if self.cityName.isEmpty || self.cityName.hasPrefix("Err") {
-                self.cityName = "Dati di esempio"
+            if self.cityName.isEmpty {
+                self.cityName = L10n.string("weather.mock.sampleData")
             }
         }
     #endif
@@ -545,106 +555,106 @@ class WeatherModel: NSObject, ObservableObject {
 
     private func descriptionFromWeatherCode(_ code: Int) -> String {
         switch code {
-        case 0: return "Ciel Sereno"
-        case 1: return "Poco Nuvoloso"
-        case 2: return "Parz. Nuvoloso"
-        case 3: return "Coperto"
-        case 45, 48: return "Nebbia"
-        case 51, 53, 55: return "Pioviggine"
-        case 56, 57: return "Pioviggine Gel."
-        case 61, 63, 65: return "Pioggia"
-        case 66, 67: return "Pioggia Gelata"
-        case 71, 73, 75: return "Neve"
-        case 77: return "Nevischio"
-        case 80, 81, 82: return "Rovesci"
-        case 85, 86: return "Rovesci Nevosi"
-        case 95: return "Temporale"
-        case 96, 99: return "Temp. con Grandine"
-        default: return "Sconosciuto"
+        case 0: return L10n.string("weather.condition.clear")
+        case 1: return L10n.string("weather.condition.mostlyClear")
+        case 2: return L10n.string("weather.condition.partlyCloudy")
+        case 3: return L10n.string("weather.condition.overcast")
+        case 45, 48: return L10n.string("weather.condition.fog")
+        case 51, 53, 55: return L10n.string("weather.condition.drizzle")
+        case 56, 57: return L10n.string("weather.condition.freezingDrizzle")
+        case 61, 63, 65: return L10n.string("weather.condition.rain")
+        case 66, 67: return L10n.string("weather.condition.freezingRain")
+        case 71, 73, 75: return L10n.string("weather.condition.snow")
+        case 77: return L10n.string("weather.condition.sleet")
+        case 80, 81, 82: return L10n.string("weather.condition.showers")
+        case 85, 86: return L10n.string("weather.condition.snowShowers")
+        case 95: return L10n.string("weather.condition.thunderstorm")
+        case 96, 99: return L10n.string("weather.condition.thunderstormHail")
+        default: return L10n.string("weather.condition.unknown")
         }
     }
 
     // Helper to translate WeatherKit conditions to Italian
     private func descriptionForCondition(_ condition: WeatherCondition) -> String {
         switch condition {
-        case .clear: return "Ciel Sereno"
-        case .cloudy: return "Nuvoloso"
-        case .mostlyClear: return "Preval. Sereno"
-        case .mostlyCloudy: return "Preval. Nuvoloso"
-        case .partlyCloudy: return "Parz. Nuvoloso"
-        case .foggy: return "Nebbia"
-        case .haze: return "Foschia"
-        case .breezy: return "Ventoso"
-        case .windy: return "Molto Ventoso"
-        case .drizzle: return "Pioviggine"
-        case .rain: return "Pioggia"
-        case .heavyRain: return "Forte Pioggia"
-        case .snow: return "Neve"
-        case .heavySnow: return "Forte Neve"
-        case .sleet: return "Nevischio"
-        case .freezingDrizzle: return "Pioviggine Gel."
-        case .freezingRain: return "Pioggia Gelata"
-        case .flurries: return "Rovesci di Neve"
-        case .blowingSnow: return "Neve Vento"
-        case .hail: return "Grandine"
-        case .thunderstorms: return "Temporali"
-        case .isolatedThunderstorms: return "Temporali Isol."
-        case .scatteredThunderstorms: return "Temporali Sparsi"
-        case .strongStorms: return "Tempeste Forti"
-        case .blowingDust: return "Polvere"
-        case .blizzard: return "Bufera di neve"
-        case .frigid: return "Gelo intenso"
-        case .hot: return "Caldo intenso"
-        case .hurricane: return "Uragano"
-        case .smoky: return "Fumosità"
-        case .sunFlurries: return "Raffiche di neve con sole"
-        case .sunShowers: return "Piovaschi con sole"
-        case .tropicalStorm: return "Tempesta tropicale"
-        case .wintryMix: return "Misto invernale"
-        @unknown default: return "Sconosciuto"
+        case .clear: return L10n.string("weather.condition.clear")
+        case .cloudy: return L10n.string("weather.condition.cloudy")
+        case .mostlyClear: return L10n.string("weather.condition.mostlyClear")
+        case .mostlyCloudy: return L10n.string("weather.condition.mostlyCloudy")
+        case .partlyCloudy: return L10n.string("weather.condition.partlyCloudy")
+        case .foggy: return L10n.string("weather.condition.fog")
+        case .haze: return L10n.string("weather.condition.haze")
+        case .breezy: return L10n.string("weather.condition.breezy")
+        case .windy: return L10n.string("weather.condition.windy")
+        case .drizzle: return L10n.string("weather.condition.drizzle")
+        case .rain: return L10n.string("weather.condition.rain")
+        case .heavyRain: return L10n.string("weather.condition.heavyRain")
+        case .snow: return L10n.string("weather.condition.snow")
+        case .heavySnow: return L10n.string("weather.condition.heavySnow")
+        case .sleet: return L10n.string("weather.condition.sleet")
+        case .freezingDrizzle: return L10n.string("weather.condition.freezingDrizzle")
+        case .freezingRain: return L10n.string("weather.condition.freezingRain")
+        case .flurries: return L10n.string("weather.condition.flurries")
+        case .blowingSnow: return L10n.string("weather.condition.blowingSnow")
+        case .hail: return L10n.string("weather.condition.hail")
+        case .thunderstorms: return L10n.string("weather.condition.thunderstorms")
+        case .isolatedThunderstorms: return L10n.string("weather.condition.isolatedThunderstorms")
+        case .scatteredThunderstorms: return L10n.string("weather.condition.scatteredThunderstorms")
+        case .strongStorms: return L10n.string("weather.condition.strongStorms")
+        case .blowingDust: return L10n.string("weather.condition.blowingDust")
+        case .blizzard: return L10n.string("weather.condition.blizzard")
+        case .frigid: return L10n.string("weather.condition.frigid")
+        case .hot: return L10n.string("weather.condition.hot")
+        case .hurricane: return L10n.string("weather.condition.hurricane")
+        case .smoky: return L10n.string("weather.condition.smoky")
+        case .sunFlurries: return L10n.string("weather.condition.sunFlurries")
+        case .sunShowers: return L10n.string("weather.condition.sunShowers")
+        case .tropicalStorm: return L10n.string("weather.condition.tropicalStorm")
+        case .wintryMix: return L10n.string("weather.condition.wintryMix")
+        @unknown default: return L10n.string("weather.condition.unknown")
         }
     }
 
     private func adviceForCondition(_ condition: WeatherCondition) -> String {
         switch condition {
         case .clear, .mostlyClear, .partlyCloudy:
-            return "Una bella giornata! Goditi il sole."
+            return L10n.string("weather.advice.sunny")
         case .cloudy, .mostlyCloudy:
-            return "Il cielo è un po' grigio oggi."
+            return L10n.string("weather.advice.cloudy")
         case .foggy, .haze:
-            return "Attenzione alla visibilità ridotta."
+            return L10n.string("weather.advice.lowVisibility")
         case .breezy, .windy:
-            return "Oggi tira vento, copriti bene!"
+            return L10n.string("weather.advice.windy")
         case .drizzle, .rain, .heavyRain:
-            return "Oggi piove, non dimenticare l'ombrello!"
+            return L10n.string("weather.advice.rainy")
         case .snow, .heavySnow, .flurries, .blowingSnow, .sleet, .freezingDrizzle, .freezingRain:
-            return "Fa freddo e nevica, copriti bene!"
+            return L10n.string("weather.advice.snow")
         case .hail:
-            return "Attenzione alla grandine!"
+            return L10n.string("weather.advice.hail")
         case .thunderstorms, .isolatedThunderstorms, .scatteredThunderstorms, .strongStorms:
-            return "Ci sono temporali, meglio stare al coperto."
+            return L10n.string("weather.advice.thunderstorms")
         case .blowingDust:
-            return "Attenzione alla polvere nell'aria."
+            return L10n.string("weather.advice.dust")
         case .blizzard:
-            return "Bufera di neve: evita spostamenti se possibile."
+            return L10n.string("weather.advice.blizzard")
         case .frigid:
-            return "Freddo intenso: copriti molto bene."
+            return L10n.string("weather.advice.frigid")
         case .hot:
-            return "Caldo intenso: resta idratato e evita le ore più calde."
+            return L10n.string("weather.advice.hot")
         case .hurricane:
-            return "Uragano in corso: segui le indicazioni delle autorità."
+            return L10n.string("weather.advice.hurricane")
         case .smoky:
-            return "Aria fumosa: limita le attività all'aperto."
+            return L10n.string("weather.advice.smoky")
         case .sunFlurries:
-            return "Raffiche di neve con schiarite: attenzione alla strada."
+            return L10n.string("weather.advice.sunFlurries")
         case .sunShowers:
-            return "Piovaschi con schiarite: porta con te un ombrello."
+            return L10n.string("weather.advice.sunShowers")
         case .tropicalStorm:
-            return "Tempesta tropicale: resta al coperto e informato."
+            return L10n.string("weather.advice.tropicalStorm")
         case .wintryMix:
-            return "Misto invernale: possibile ghiaccio, guida con cautela."
+            return L10n.string("weather.advice.wintryMix")
         @unknown default:
-            return "Bentornato nella tua dashboard."
+            return L10n.string("weather.advice.default")
         }
     }
 
@@ -657,19 +667,19 @@ class WeatherModel: NSObject, ObservableObject {
         // 95-99: Temporali
         switch code {
         case 0, 1, 2:
-            return "Una bella giornata! Goditi il sole."
+            return L10n.string("weather.advice.sunny")
         case 3:
-            return "Il cielo è coperto oggi."
+            return L10n.string("weather.advice.overcast")
         case 45, 48:
-            return "Attenzione alla nebbia."
+            return L10n.string("weather.advice.fog")
         case 51...67, 80...82:
-            return "Giornata di pioggia, ricorda l'ombrello!"
+            return L10n.string("weather.advice.rainy")
         case 71...77, 85...86:
-            return "Nevica! Copriti bene se esci."
+            return L10n.string("weather.advice.snow")
         case 95...99:
-            return "Temporali in corso, attenzione."
+            return L10n.string("weather.advice.thunderstormsShort")
         default:
-            return "Bentornato nella tua dashboard."
+            return L10n.string("weather.advice.default")
         }
     }
 
@@ -694,6 +704,7 @@ class WeatherModel: NSObject, ObservableObject {
         let current_weather: Current?
         let hourly: Hourly?
         let daily: Daily?
+        let timezone: String?
     }
 
     private struct OpenMeteoGeocodingResponse: Decodable {
@@ -708,7 +719,8 @@ class WeatherModel: NSObject, ObservableObject {
         let admin1: String?  // Regione/Stato
     }
 
-    private func fetchWeatherFromOpenMeteo(for location: CLLocation) async {
+    private func fetchWeatherFromOpenMeteo(for location: CLLocation, requestID: UInt64? = nil) async
+    {
         let lat = location.coordinate.latitude
         let lon = location.coordinate.longitude
         var comps = URLComponents(string: "https://api.open-meteo.com/v1/forecast")!
@@ -724,6 +736,28 @@ class WeatherModel: NSObject, ObservableObject {
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             let decoded = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
+            if let requestID, !isLatestWeatherRequest(requestID) { return }
+
+            let sourceTimeZone = decoded.timezone.flatMap(TimeZone.init(identifier:)) ?? .current
+            let inputFormatter = DateFormatter()
+            inputFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
+            inputFormatter.locale = Locale(identifier: "en_US_POSIX")
+            inputFormatter.timeZone = sourceTimeZone
+
+            let outputHourFormatter = DateFormatter()
+            outputHourFormatter.locale = .autoupdatingCurrent
+            outputHourFormatter.dateFormat = "HH:mm"
+            outputHourFormatter.timeZone = sourceTimeZone
+
+            let dayInputFormatter = DateFormatter()
+            dayInputFormatter.locale = Locale(identifier: "en_US_POSIX")
+            dayInputFormatter.dateFormat = "yyyy-MM-dd"
+            dayInputFormatter.timeZone = sourceTimeZone
+
+            let outputDayFormatter = DateFormatter()
+            outputDayFormatter.locale = .autoupdatingCurrent
+            outputDayFormatter.dateFormat = "EE"
+            outputDayFormatter.timeZone = sourceTimeZone
 
             if let current = decoded.current_weather {
                 self.currentTemp = String(format: "%.0f°", current.temperature)
@@ -739,7 +773,7 @@ class WeatherModel: NSObject, ObservableObject {
                 var startIndex = 0
                 for (idx, ts) in hourly.time.enumerated() {
                     // Prova a trovare il primo slot temporale che è >= adesso (o vicino)
-                    if let d = Self.openMeteoInputFormatter.date(from: ts),
+                    if let d = inputFormatter.date(from: ts),
                         d >= now.addingTimeInterval(-1800)
                     {
                         // Consenti buffer di 30 min per non saltare l'ora corrente solo perché siamo a xx:01
@@ -756,9 +790,9 @@ class WeatherModel: NSObject, ObservableObject {
                     var label = "--:--"
 
                     if idx == startIndex {
-                        label = "Ora"
-                    } else if let date = Self.openMeteoInputFormatter.date(from: rawTime) {
-                        label = Self.hourFormatter.string(from: date)
+                        label = L10n.string("weather.hour.now")
+                    } else if let date = inputFormatter.date(from: rawTime) {
+                        label = outputHourFormatter.string(from: date)
                     }
 
                     let temp = idx < hourly.temperature_2m.count ? hourly.temperature_2m[idx] : .nan
@@ -784,8 +818,8 @@ class WeatherModel: NSObject, ObservableObject {
 
                 for i in startIndex..<endIndex {
                     let label =
-                        Self.openMeteoDayInputFormatter.date(from: daily.time[i]).map {
-                            Self.dayFormatter.string(from: $0)
+                        dayInputFormatter.date(from: daily.time[i]).map {
+                            outputDayFormatter.string(from: $0)
                         } ?? daily.time[i]
                     let code = daily.weathercode?[i] ?? 0
                     let high = daily.temperature_2m_max[i]
@@ -810,8 +844,14 @@ class WeatherModel: NSObject, ObservableObject {
         guard let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
         else { return nil }
 
+        let preferredLanguageCode =
+            Locale.preferredLanguages.first?
+            .split(separator: "-")
+            .first
+            .map(String.init) ?? "it"
+
         let urlString =
-            "https://geocoding-api.open-meteo.com/v1/search?name=\(encodedName)&count=1&language=it&format=json"
+            "https://geocoding-api.open-meteo.com/v1/search?name=\(encodedName)&count=1&language=\(preferredLanguageCode)&format=json"
 
         guard let url = URL(string: urlString) else { return nil }
 
@@ -871,6 +911,7 @@ extension WeatherModel: CLLocationManagerDelegate {
             if let loc = locations.last {
                 self.locationRequestContinuations.forEach { $0.resume(returning: loc) }
                 self.locationRequestContinuations.removeAll()
+                if self.useManualCity { return }
                 await self.fetchWeather(for: loc)
             } else {
                 self.locationRequestContinuations.forEach { $0.resume(returning: nil) }

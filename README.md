@@ -50,8 +50,14 @@ Note:
 open DashB.xcodeproj
 ```
 1. Apri il progetto in Xcode.
-2. Imposta i valori OAuth nelle Build Settings/Info.plist del target.
-3. Esegui su Apple TV o simulatore tvOS compatibile.
+2. Crea il file locale dei segreti:
+```bash
+cp DashB/Config/Secrets.example.xcconfig DashB/Config/Secrets.xcconfig
+```
+3. Inserisci i valori OAuth reali in `DashB/Config/Secrets.xcconfig`.
+4. Esegui su Apple TV o simulatore tvOS compatibile.
+
+`DashB/Config/Secrets.xcconfig` è ignorato da Git e non viene pushato su GitHub.
 
 ## Struttura utile
 - `DashB/Core/Config.swift`: validazione chiavi OAuth.

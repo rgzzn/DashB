@@ -15,11 +15,17 @@ public enum Motion {
     /// 220–320 ms: Neutral. Used for standard card state transitions.
     public static let standard = Animation.easeInOut(duration: 0.28)
 
+    /// 320–420 ms: Softer content updates. Used for cozy text/image swaps.
+    public static let calm = Animation.easeInOut(duration: 0.36)
+
     /// 350–500 ms: Graceful entry. Used for section entries or major layout changes.
     public static let enter = Animation.easeOut(duration: 0.42)
 
     /// Spring physics based: Ideal for elements mimicking physical depth (like focus cards or selection).
     public static let focus = Animation.spring(response: 0.28, dampingFraction: 0.82)
+
+    /// Long ambient motion for backgrounds and decorative drift.
+    public static let ambient = Animation.easeInOut(duration: 18).repeatForever(autoreverses: true)
 }
 
 struct PremiumButtonStyle: ButtonStyle {
