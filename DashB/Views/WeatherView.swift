@@ -11,124 +11,180 @@ struct WeatherView: View {
     @EnvironmentObject private var model: WeatherModel
     @State private var showContent = false
 
+    private let panelShape = RoundedRectangle(cornerRadius: 30, style: .continuous)
+
     var body: some View {
+        ZStack {
+            panelShape
+                .fill(Color.white.opacity(0.06))
+                .overlay(
+                    panelShape
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                )
+                .overlay {
+                    panelShape
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.05),
+                                    .clear,
+                                    Color.white.opacity(0.04),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .weatherLiquidGlass(cornerRadius: 30, tint: .white)
+
+            weatherContent
+                .padding(24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .clipShape(panelShape)
+        .shadow(color: .black.opacity(0.24), radius: 24, y: 12)
+        .onAppear {
+            guard !showContent else { return }
+            withAnimation(Motion.enter) {
+                showContent = true
+            }
+        }
+    }
+
+    private var weatherContent: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Sopra: Condizioni Attuali
-            HStack(alignment: .top) {
-                Image(systemName: model.conditionIcon)
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 60, height: 60)
-                    .symbolRenderingMode(.multicolor)
-                    .contentTransition(.symbolEffect(.replace))
-                    .shadow(color: .yellow.opacity(0.3), radius: 10)
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: -5) {
-                    Text(model.currentTemp)
-                        .font(.system(size: 64, weight: .light))
-                        .foregroundColor(.white)
-                    Text(model.conditionDescription)  // Descrizione dinamica dal modello
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.6))
-                }
-            }
-            .padding(.bottom, 10)
-            .opacity(showContent ? 1 : 0)
-            .offset(y: showContent ? 0 : 8)
-            .animation(Motion.enter.delay(0.05), value: showContent)
-
-            // Centro: Prossime Ore
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Prossime ore")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white.opacity(0.8))
-
-                HStack(spacing: 20) {
-                    ForEach(model.hourlyForecast) { forecast in
-                        VStack(spacing: 8) {
-                            Text(forecast.time)
-                                .font(.caption2)
-                                .foregroundColor(.white.opacity(0.6))
-                            Image(systemName: forecast.icon)
-                                .font(.title3)
-                                .symbolRenderingMode(.multicolor)
-                            Text(forecast.temp)
-                                .font(.callout)
-                                .fontWeight(.medium)
-                                .foregroundColor(.white)
-                        }
-                        .frame(minWidth: 40)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                }
-            }
-            .opacity(showContent ? 1 : 0)
-            .offset(y: showContent ? 0 : 10)
-            .animation(Motion.enter.delay(0.12), value: showContent)
-            .animation(Motion.standard, value: model.hourlyForecast.count)
-
+            currentConditions
+            hourlySection
             Divider()
                 .background(Color.white.opacity(0.2))
+            dailySection
+        }
+    }
 
-            // Sotto: Previsioni a 5 giorni
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Previsioni a 5 giorni")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white.opacity(0.8))
+    private var currentConditions: some View {
+        HStack(alignment: .top) {
+            Image(systemName: model.conditionIcon)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 60, height: 60)
+                .symbolRenderingMode(.multicolor)
+                .contentTransition(.symbolEffect(.replace))
+                .shadow(color: .yellow.opacity(0.3), radius: 10)
 
-                VStack(spacing: 8) {
-                    ForEach(model.dailyForecast) { day in
-                        HStack {
-                            Text(day.day)
-                                .font(.callout)
-                                .foregroundStyle(.white.opacity(0.8))
-                                .frame(maxWidth: .infinity, alignment: .leading)
+            Spacer()
 
-                            Image(systemName: day.icon)
-                                .symbolRenderingMode(.multicolor)
-                                .font(.title3)
-                                .frame(width: 35)
+            VStack(alignment: .trailing, spacing: -5) {
+                Text(model.currentTemp)
+                    .font(.system(size: 64, weight: .light))
+                    .foregroundColor(.white)
+                    .contentTransition(.numericText())
+                    .animation(Motion.calm, value: model.currentTemp)
 
-                            HStack(spacing: 6) {
-                                Text(day.tempHigh)
-                                    .fontWeight(.medium)
-                                    .frame(width: 45, alignment: .trailing)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                Text(day.tempLow)
-                                    .foregroundStyle(.white.opacity(0.5))
-                                    .frame(width: 45, alignment: .trailing)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                            }
+                Text(model.conditionDescription)
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.6))
+                    .contentTransition(.opacity)
+                    .animation(Motion.calm, value: model.conditionDescription)
+            }
+        }
+        .padding(.bottom, 10)
+        .opacity(showContent ? 1 : 0)
+        .offset(y: showContent ? 0 : 8)
+        .animation(Motion.enter.delay(0.05), value: showContent)
+    }
+
+    private var hourlySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Prossime ore")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(.white.opacity(0.8))
+
+            HStack(spacing: 20) {
+                ForEach(Array(model.hourlyForecast.enumerated()), id: \.element.id) { index, forecast in
+                    VStack(spacing: 8) {
+                        Text(forecast.time)
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.6))
+
+                        Image(systemName: forecast.icon)
+                            .font(.title3)
+                            .symbolRenderingMode(.multicolor)
+
+                        Text(forecast.temp)
                             .font(.callout)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                        }
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
                     }
+                    .frame(minWidth: 40)
+                    .opacity(showContent ? 1 : 0)
+                    .offset(y: showContent ? 0 : 10)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(Motion.enter.delay(0.14 + (Double(index) * 0.03)), value: showContent)
                 }
             }
-            .opacity(showContent ? 1 : 0)
-            .offset(y: showContent ? 0 : 12)
-            .animation(Motion.enter.delay(0.2), value: showContent)
-            .animation(Motion.standard, value: model.dailyForecast.count)
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(.ultraThinMaterial)
-        .cornerRadius(30)
         .opacity(showContent ? 1 : 0)
         .offset(y: showContent ? 0 : 10)
-        .animation(Motion.enter, value: showContent)
-        .onAppear {
-            showContent = true
+        .animation(Motion.enter.delay(0.12), value: showContent)
+    }
+
+    private var dailySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Previsioni a 5 giorni")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(.white.opacity(0.8))
+
+            VStack(spacing: 8) {
+                ForEach(Array(model.dailyForecast.enumerated()), id: \.element.id) { index, day in
+                    HStack {
+                        Text(day.day)
+                            .font(.callout)
+                            .foregroundStyle(.white.opacity(0.8))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Image(systemName: day.icon)
+                            .symbolRenderingMode(.multicolor)
+                            .font(.title3)
+                            .frame(width: 35)
+
+                        HStack(spacing: 6) {
+                            Text(day.tempHigh)
+                                .fontWeight(.medium)
+                                .frame(width: 45, alignment: .trailing)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+
+                            Text(day.tempLow)
+                                .foregroundStyle(.white.opacity(0.5))
+                                .frame(width: 45, alignment: .trailing)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .font(.callout)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                    .opacity(showContent ? 1 : 0)
+                    .offset(y: showContent ? 0 : 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(Motion.enter.delay(0.2 + (Double(index) * 0.035)), value: showContent)
+                }
+            }
         }
-        .task {
-            await model.refresh()
+        .opacity(showContent ? 1 : 0)
+        .offset(y: showContent ? 0 : 12)
+        .animation(Motion.enter.delay(0.2), value: showContent)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func weatherLiquidGlass(cornerRadius: CGFloat, tint: Color) -> some View {
+        if #available(tvOS 26.0, iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *) {
+            self.glassEffect(.regular.tint(tint.opacity(0.1)), in: .rect(cornerRadius: cornerRadius))
+        } else {
+            self
         }
     }
 }

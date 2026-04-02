@@ -22,113 +22,142 @@ struct CalendarSelectionView<Service: CalendarService>: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Seleziona Calendari")
-                    .font(.system(size: 68, weight: .bold))
-                Spacer()
-                Button("Fatto") { dismiss() }
-                    .buttonStyle(PremiumButtonStyle())
-            }
-            .padding(50)
-            .background(Color.black.opacity(0.3))
+        ZStack {
+            GradientBackgroundView()
+                .overlay {
+                    CalendarSubmenuBackdrop()
+                }
+                .ignoresSafeArea()
 
-            if isLoading {
-                Spacer()
-                ProgressView("Caricamento calendari...")
-                Spacer()
-            } else if let error = errorMsg {
-                Spacer()
-                Text(error)
-                    .foregroundColor(.red)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 30)
-                Button("Riprova") { loadCalendars() }
-                    .buttonStyle(PremiumButtonStyle())
-                    .accessibilityLabel("Riprova caricamento calendari")
-                Spacer()
-            } else {
-                ScrollView {
-                    VStack(spacing: 20) {
-                        ForEach(availableCalendars) { cal in
-                            let isSelected = selectedConfigs.contains(where: { $0.id == cal.id })
+            VStack(spacing: 24) {
+                header
 
-                            VStack(alignment: .leading, spacing: 15) {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(cal.name)
-                                            .font(.headline)
-                                    }
-
-                                    Spacer()
-
-                                    Toggle(
-                                        "",
-                                        isOn: Binding(
-                                            get: { isSelected },
-                                            set: { active in
-                                                if active {
-                                                    if !isSelected {
-                                                        var newCal = cal
-                                                        newCal.colorHex = basicColors[0]
-                                                        selectedConfigs.append(newCal)
-                                                    }
-                                                } else {
-                                                    selectedConfigs.removeAll(where: {
-                                                        $0.id == cal.id
-                                                    })
-                                                }
-                                            }
-                                        )
-                                    )
-                                    .toggleStyle(.switch)
-                                    .accessibilityLabel("Seleziona calendario \(cal.name)")
-                                }
-
-                                if isSelected {
-                                    HStack(spacing: 20) {
-                                        ForEach(basicColors, id: \.self) { hex in
-                                            let isCurrent =
-                                                selectedConfigs.first(where: { $0.id == cal.id })?
-                                                .colorHex == hex
-
-                                            Button {
-                                                if let index = selectedConfigs.firstIndex(where: {
-                                                    $0.id == cal.id
-                                                }) {
-                                                    selectedConfigs[index].colorHex = hex
-                                                }
-                                            } label: {
-                                                Circle()
-                                                    .fill(Color(hex: hex))
-                                                    .frame(width: 44, height: 44)
-                                                    .overlay(
-                                                        Circle()
-                                                            .stroke(
-                                                                Color.white,
-                                                                lineWidth: isCurrent ? 4 : 0)
-                                                    )
-                                                    .shadow(radius: isCurrent ? 5 : 0)
-                                            }
-                                            .buttonStyle(ColorButtonStyle())
-                                            .accessibilityLabel("Colore \(hex) per \(cal.name)")
-                                        }
-                                    }
-                                    .padding(.vertical, 10)
-                                    .padding(.leading, 10)
-                                }
-                            }
-                            .padding(25)
-                            .background(Color.white.opacity(0.05))
-                            .cornerRadius(15)
-                        }
+                if isLoading {
+                    Spacer()
+                    ProgressView("Caricamento calendari...")
+                        .tint(.white)
+                    Spacer()
+                } else if let error = errorMsg {
+                    Spacer()
+                    VStack(spacing: 18) {
+                        Text(error)
+                            .foregroundColor(.red)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 30)
+                        Button("Riprova") { loadCalendars() }
+                            .buttonStyle(CalendarSubmenuButtonStyle(prominent: true))
+                            .accessibilityLabel("Riprova caricamento calendari")
                     }
-                    .padding(50)
+                    Spacer()
+                } else {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            ForEach(availableCalendars) { cal in
+                                let isSelected = selectedConfigs.contains(where: { $0.id == cal.id })
+
+                                VStack(alignment: .leading, spacing: 18) {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            Text(cal.name)
+                                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                                .foregroundStyle(.white)
+                                            Text(isSelected ? "Visibile in dashboard" : "Non attivo")
+                                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                                .foregroundStyle(.white.opacity(0.56))
+                                        }
+
+                                        Spacer()
+
+                                        Toggle(
+                                            "",
+                                            isOn: Binding(
+                                                get: { isSelected },
+                                                set: { active in
+                                                    if active {
+                                                        if !isSelected {
+                                                            var newCal = cal
+                                                            newCal.colorHex = basicColors[0]
+                                                            selectedConfigs.append(newCal)
+                                                        }
+                                                    } else {
+                                                        selectedConfigs.removeAll(where: {
+                                                            $0.id == cal.id
+                                                        })
+                                                    }
+                                                }
+                                            )
+                                        )
+                                        .toggleStyle(.switch)
+                                        .accessibilityLabel("Seleziona calendario \(cal.name)")
+                                    }
+
+                                    if isSelected {
+                                        HStack(spacing: 20) {
+                                            ForEach(basicColors, id: \.self) { hex in
+                                                let isCurrent =
+                                                    selectedConfigs.first(where: { $0.id == cal.id })?
+                                                    .colorHex == hex
+
+                                                Button {
+                                                    if let index = selectedConfigs.firstIndex(where: {
+                                                        $0.id == cal.id
+                                                    }) {
+                                                        selectedConfigs[index].colorHex = hex
+                                                    }
+                                                } label: {
+                                                    Circle()
+                                                        .fill(Color(hex: hex))
+                                                        .frame(width: 48, height: 48)
+                                                        .overlay(
+                                                            Circle()
+                                                                .stroke(
+                                                                    Color.white,
+                                                                    lineWidth: isCurrent ? 4 : 0)
+                                                        )
+                                                        .shadow(radius: isCurrent ? 7 : 0)
+                                                }
+                                                .buttonStyle(ColorButtonStyle())
+                                                .accessibilityLabel("Colore \(hex) per \(cal.name)")
+                                            }
+                                        }
+                                        .padding(.vertical, 10)
+                                        .padding(.leading, 4)
+                                    }
+                                }
+                                .padding(26)
+                                .modifier(
+                                    CalendarSelectionPanelStyle(
+                                        tint: isSelected ? .cyan.opacity(0.05) : .clear
+                                    )
+                                )
+                            }
+                        }
+                        .padding(40)
+                    }
                 }
             }
         }
-        .background(GradientBackgroundView().ignoresSafeArea())
         .onAppear { loadCalendars() }
+    }
+
+    private var header: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Seleziona Calendari")
+                    .font(.system(size: 46, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                Text("Attiva i calendari visibili nella dashboard e assegna un colore a ciascuno.")
+                    .font(.system(size: 20, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.68))
+            }
+
+            Spacer()
+
+            Button("Fatto") { dismiss() }
+                .buttonStyle(CalendarSubmenuButtonStyle(prominent: false))
+        }
+        .padding(.horizontal, 40)
+        .padding(.top, 40)
     }
 
     private func loadCalendars() {
@@ -139,7 +168,6 @@ struct CalendarSelectionView<Service: CalendarService>: View {
                 let fetched = try await service.fetchAvailableCalendars()
                 await MainActor.run {
                     self.availableCalendars = fetched
-                    // Auto-activate all calendars by default if they are not already selected
                     for cal in fetched {
                         if !selectedConfigs.contains(where: { $0.id == cal.id }) {
                             var newCal = cal
@@ -180,14 +208,149 @@ struct ColorButtonStyle: ButtonStyle {
     @Environment(\.isFocused) var isFocused
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(isFocused ? 1.3 : 1.0)
-            .shadow(color: .white.opacity(isFocused ? 0.6 : 0), radius: 10)
+            .scaleEffect(isFocused ? 1.18 : 1.0)
+            .shadow(color: .white.opacity(isFocused ? 0.45 : 0), radius: 10)
             .overlay(
                 Circle()
                     .stroke(Color.white, lineWidth: isFocused ? 4 : 0)
                     .padding(-6)
             )
             .animation(Motion.focus, value: isFocused)
+            .dashBDisableSystemFocusEffect()
+    }
+}
+
+private struct CalendarSubmenuBackdrop: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.cyan.opacity(0.14))
+                .frame(width: 620, height: 620)
+                .blur(radius: 120)
+                .offset(x: -420, y: -220)
+
+            Circle()
+                .fill(Color.blue.opacity(0.16))
+                .frame(width: 560, height: 560)
+                .blur(radius: 100)
+                .offset(x: 420, y: -180)
+        }
+        .ignoresSafeArea()
+    }
+}
+
+private struct CalendarSelectionPanelStyle: ViewModifier {
+    var tint: Color = .clear
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(tint)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.05), .clear, tint.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .calendarSelectionGlass(cornerRadius: 24)
+            .shadow(color: .black.opacity(0.22), radius: 24, y: 10)
+    }
+}
+
+private struct CalendarSubmenuButtonStyle: PrimitiveButtonStyle {
+    let prominent: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        Button(role: nil, action: configuration.trigger) {
+            configuration.label
+        }
+        .dashBDisableSystemFocusEffect()
+        .modifier(CalendarButtonChrome(prominent: prominent))
+        .buttonStyle(.plain)
+    }
+}
+
+private struct CalendarButtonChrome: ViewModifier {
+    let prominent: Bool
+    @Environment(\.isFocused) private var isFocused
+
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: 20, weight: .bold, design: .rounded))
+            .foregroundStyle(prominent ? Color.black : Color.white)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(
+                        prominent
+                            ? Color.white.opacity(0.9)
+                            : Color(red: 0.12, green: 0.17, blue: 0.27).opacity(0.86)
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(prominent ? Color.clear : Color.cyan.opacity(0.2), lineWidth: 1)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.white.opacity(isFocused ? 0.08 : 0.04), .clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .calendarSelectionGlass(cornerRadius: 20, tint: prominent ? .white : .cyan, interactive: true)
+            .scaleEffect(isFocused ? 1.012 : 1)
+            .shadow(color: Color.cyan.opacity(isFocused ? 0.12 : 0.06), radius: 18, y: 8)
+            .animation(Motion.focus, value: isFocused)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func calendarSelectionGlass(
+        cornerRadius: CGFloat,
+        tint: Color = .white,
+        interactive: Bool = false
+    ) -> some View {
+        if #available(tvOS 26.0, iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *) {
+            self.glassEffect(
+                interactive
+                    ? .regular.tint(tint.opacity(0.15)).interactive()
+                    : .regular.tint(tint.opacity(0.08)),
+                in: .rect(cornerRadius: cornerRadius)
+            )
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func dashBDisableSystemFocusEffect() -> some View {
+        if #available(tvOS 17.0, iOS 17.0, macOS 14.0, visionOS 1.0, watchOS 10.0, *) {
+            self
+                .focusEffectDisabled()
+                .hoverEffectDisabled(true)
+        } else {
+            self
+        }
     }
 }
 
@@ -227,6 +390,7 @@ struct CalendarSelectionPreviewContainer: View {
             .background(GradientBackgroundView().ignoresSafeArea())
     }
 }
+
 #Preview {
     CalendarSelectionPreviewContainer()
 }
