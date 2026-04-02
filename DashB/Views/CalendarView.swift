@@ -36,6 +36,8 @@ struct CalendarView: View {
     }
 
     var body: some View {
+        let grouped = groupedEvents
+
         VStack(alignment: .leading, spacing: 20) {
             // Restore Header
             HStack {
@@ -49,7 +51,7 @@ struct CalendarView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(Array(groupedEvents.enumerated()), id: \.element.0) { index, entry in
+                    ForEach(Array(grouped.enumerated()), id: \.element.0) { index, entry in
                         let date = entry.0
                         let events = entry.1
                         VStack(alignment: .leading, spacing: 8) {
@@ -81,7 +83,7 @@ struct CalendarView: View {
                         )
                     }
 
-                    if groupedEvents.isEmpty {
+                    if grouped.isEmpty {
                         VStack(spacing: 15) {
                             Spacer()
                             Image(systemName: "calendar.badge.clock")
@@ -98,7 +100,6 @@ struct CalendarView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.98)))
                     }
                 }
-                .animation(Motion.standard, value: manager.upcomingEvents.count)
             }
         }
         .padding(20)
@@ -227,7 +228,11 @@ private struct CalendarGlassPanel: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.white.opacity(0.04))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

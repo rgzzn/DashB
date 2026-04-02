@@ -5,13 +5,10 @@
 //  Created by Luca Ragazzini on 20/01/26.
 //
 
-import Combine
 import SwiftUI
 
 struct ClockView: View {
-    @State private var currentTime = Date()
     @State private var showContent = false
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = .autoupdatingCurrent
@@ -20,29 +17,29 @@ struct ClockView: View {
         return formatter
     }()
 
-    var dateString: String {
-        Self.dateFormatter.string(from: currentTime).capitalized
+    private func dateString(for date: Date) -> String {
+        Self.dateFormatter.string(from: date).capitalized
     }
 
     var body: some View {
-        VStack(alignment: .trailing) {
-            Text(currentTime, style: .time)
-                .font(.system(size: 80, weight: .bold, design: .monospaced))
-                .foregroundColor(.white)
-                .shadow(radius: 5)
-                .contentTransition(.numericText())
-                .animation(Motion.standard, value: currentTime)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
+        TimelineView(.periodic(from: .now, by: 1)) { timeline in
+            VStack(alignment: .trailing) {
+                Text(timeline.date, style: .time)
+                    .font(.system(size: 80, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white)
+                    .shadow(radius: 5)
+                    .contentTransition(.numericText())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
 
-            Text(dateString)
-                .font(.system(size: 30, weight: .medium, design: .default))
-                .foregroundColor(.white.opacity(0.9))
-                .shadow(radius: 3)
-                .contentTransition(.opacity)
-                .animation(Motion.calm, value: dateString)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
+                Text(dateString(for: timeline.date))
+                    .font(.system(size: 30, weight: .medium, design: .default))
+                    .foregroundColor(.white.opacity(0.9))
+                    .shadow(radius: 3)
+                    .contentTransition(.opacity)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+            }
         }
         .opacity(showContent ? 1 : 0)
         .offset(y: showContent ? 0 : 6)
@@ -52,9 +49,6 @@ struct ClockView: View {
             withAnimation(Motion.enter) {
                 showContent = true
             }
-        }
-        .onReceive(timer) { input in
-            currentTime = input
         }
     }
 }

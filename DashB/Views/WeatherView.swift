@@ -16,7 +16,11 @@ struct WeatherView: View {
     var body: some View {
         ZStack {
             panelShape
-                .fill(Color.white.opacity(0.06))
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    panelShape
+                        .fill(Color.white.opacity(0.04))
+                )
                 .overlay(
                     panelShape
                         .stroke(Color.white.opacity(0.12), lineWidth: 1)
@@ -100,7 +104,7 @@ struct WeatherView: View {
                 .foregroundColor(.white.opacity(0.8))
 
             HStack(spacing: 20) {
-                ForEach(Array(model.hourlyForecast.enumerated()), id: \.element.id) { index, forecast in
+                ForEach(model.hourlyForecast) { forecast in
                     VStack(spacing: 8) {
                         Text(forecast.time)
                             .font(.caption2)
@@ -132,7 +136,7 @@ struct WeatherView: View {
                 .foregroundColor(.white.opacity(0.8))
 
             VStack(spacing: 8) {
-                ForEach(Array(model.dailyForecast.enumerated()), id: \.element.id) { index, day in
+                ForEach(model.dailyForecast) { day in
                     HStack {
                         Text(day.day)
                             .font(.callout)

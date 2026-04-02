@@ -789,6 +789,10 @@ private struct SettingsGlassPanel: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(baseFillColor)
             )
             .overlay(

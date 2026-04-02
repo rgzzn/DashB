@@ -105,6 +105,7 @@ class RSSModel: ObservableObject {
     }
 
     private var timer: Timer?
+    private var fetchTask: Task<Void, Never>?
     private let ogImageService = OGImageService()
     private let feedsDefaultsKey = "RSSModel.savedFeeds"
     private let defaultFeeds: [FeedConfig] = [
@@ -133,38 +134,42 @@ class RSSModel: ObservableObject {
     }
 
     func startTimer() {
+        timer?.invalidate()
         // Aggiorna il feed ogni 15 minuti
         timer = Timer.scheduledTimer(withTimeInterval: 900, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            Task {
-                await self.fetchNews()
-            }
+            self?.fetchNews()
         }
     }
 
     func updateFeeds(_ newFeeds: [FeedConfig]) {
-        self.feeds = newFeeds
-        self.newsItems = []  // Clear old items
-        Task { @MainActor in
-            self.fetchNews()
-        }
+        guard feeds != newFeeds else { return }
+        feeds = newFeeds
+        newsItems = []  // Clear old items
+        fetchNews()
     }
 
     func fetchNews() {
-        Task {
+        fetchTask?.cancel()
+        let feedsSnapshot = feeds
+
+        fetchTask = Task { [weak self] in
+            guard let self else { return }
             var allItems: [NewsItem] = []
 
             await withTaskGroup(of: [NewsItem].self) { group in
-                for feed in feeds {
+                for feed in feedsSnapshot {
                     group.addTask {
+                        if Task.isCancelled { return [] }
                         return await self.fetchSingleFeed(feed)
                     }
                 }
 
                 for await items in group {
+                    if Task.isCancelled { return }
                     allItems.append(contentsOf: items)
                 }
             }
+            if Task.isCancelled { return }
 
             // Ordina per rawDate (più recenti prima)
             let sortedItems = allItems.sorted { (item1, item2) -> Bool in
@@ -211,8 +216,10 @@ class RSSModel: ObservableObject {
         guard !itemsToFetch.isEmpty else { return }
 
         for start in stride(from: 0, to: itemsToFetch.count, by: batchSize) {
+            if Task.isCancelled { return }
             let end = min(start + batchSize, itemsToFetch.count)
             let batch = itemsToFetch[start..<end]
+            var updates: [UUID: String] = [:]
 
             await withTaskGroup(of: (UUID, String?).self) { group in
                 for item in batch {
@@ -226,17 +233,30 @@ class RSSModel: ObservableObject {
                 }
 
                 for await (itemID, ogImage) in group {
-                    guard let ogImage,
-                        let index = self.newsItems.firstIndex(where: { $0.id == itemID })
-                    else { continue }
-                    self.newsItems[index].imageUrl = ogImage
+                    guard let ogImage else { continue }
+                    updates[itemID] = ogImage
                 }
+            }
+
+            guard !updates.isEmpty else { continue }
+            var mergedItems = newsItems
+            var didMutate = false
+            for index in mergedItems.indices {
+                let id = mergedItems[index].id
+                guard let imageURL = updates[id], mergedItems[index].imageUrl == nil else { continue }
+                mergedItems[index].imageUrl = imageURL
+                didMutate = true
+            }
+
+            if didMutate {
+                newsItems = mergedItems
             }
         }
     }
 
     deinit {
         timer?.invalidate()
+        fetchTask?.cancel()
     }
 
     func resetToDefaultFeeds() {

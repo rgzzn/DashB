@@ -36,6 +36,7 @@ class WeatherModel: NSObject, ObservableObject {
     @Published var useManualCity: Bool {
         didSet {
             UserDefaults.standard.set(useManualCity, forKey: Self.useManualCityDefaultsKey)
+            guard oldValue != useManualCity else { return }
             Task { await self.refresh() }
         }
     }
@@ -99,6 +100,7 @@ class WeatherModel: NSObject, ObservableObject {
     }
 
     func startTimer() {
+        timer?.invalidate()
         // Aggiorna ogni 15 minuti
         timer = Timer.scheduledTimer(withTimeInterval: 900, repeats: true) { [weak self] _ in
             Task { await self?.refresh() }
@@ -234,26 +236,38 @@ class WeatherModel: NSObject, ObservableObject {
 
     func updateCity(_ name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty {
-            self.selectedCity = trimmed
+        guard !trimmed.isEmpty else { return }
+
+        let cityChanged = selectedCity.caseInsensitiveCompare(trimmed) != .orderedSame
+        if cityChanged {
+            selectedCity = trimmed
             cachedManualCity = nil
             cachedManualLocation = nil
             cachedManualCityName = nil
-            self.useManualCity = true
+        }
+
+        let wasManualCity = useManualCity
+        useManualCity = true
+
+        if wasManualCity && cityChanged {
             Task { await self.refresh() }
         }
     }
 
     func useCurrentLocation() {
-        self.useManualCity = false
+        let wasManualCity = useManualCity
+        useManualCity = false
         requestLocationIfNeeded()
+
+        if !wasManualCity {
+            Task { await self.refresh() }
+        }
+
         Task {
-            await self.refresh()
-            // Dopo il refresh, se abbiamo una posizione GPS, aggiorniamo selectedCity con il nome della città
-            if !self.useManualCity, let location = await currentLocation() {
-                if let cityName = await reverseGeocodeLocation(location) {
-                    self.selectedCity = cityName
-                }
+            // Dopo il refresh GPS, riallinea selectedCity con la città effettiva.
+            guard !self.useManualCity, let location = await currentLocation() else { return }
+            if let cityName = await reverseGeocodeLocation(location) {
+                self.selectedCity = cityName
             }
         }
     }
@@ -892,7 +906,6 @@ extension WeatherModel: CLLocationManagerDelegate {
             if self.useManualCity { return }
             switch manager.authorizationStatus {
             case .authorizedWhenInUse, .authorizedAlways:
-                manager.requestLocation()
                 await self.refresh()
             case .denied, .restricted:
                 await self.fetchDefaultCityWeather()
@@ -909,10 +922,13 @@ extension WeatherModel: CLLocationManagerDelegate {
     ) {
         Task { @MainActor in
             if let loc = locations.last {
+                let hadPendingContinuations = !self.locationRequestContinuations.isEmpty
                 self.locationRequestContinuations.forEach { $0.resume(returning: loc) }
                 self.locationRequestContinuations.removeAll()
                 if self.useManualCity { return }
-                await self.fetchWeather(for: loc)
+                if !hadPendingContinuations {
+                    await self.fetchWeather(for: loc)
+                }
             } else {
                 self.locationRequestContinuations.forEach { $0.resume(returning: nil) }
                 self.locationRequestContinuations.removeAll()

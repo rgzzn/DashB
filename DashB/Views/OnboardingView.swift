@@ -105,7 +105,6 @@ struct OnboardingView: View {
                 contentVisible = true
             }
         }
-        .animation(Motion.standard, value: currentStep)
     }
 
     private var onboardingBackdrop: some View {
@@ -865,7 +864,11 @@ private struct OnboardingCardStyle: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: 34, style: .continuous)
-                    .fill(Color.white.opacity(0.07))
+                    .fill(.regularMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 34, style: .continuous)
+                    .fill(Color.white.opacity(0.04))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 34, style: .continuous)
@@ -895,7 +898,11 @@ private struct OnboardingPanelStyle: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white.opacity(0.035))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)

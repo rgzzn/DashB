@@ -5,7 +5,6 @@
 //  Created by Luca Ragazzini on 20/01/26.
 //
 
-import Combine
 import CoreImage.CIFilterBuiltins
 import Foundation
 import SwiftUI
@@ -31,7 +30,8 @@ struct NewsTickerView: View {
     @EnvironmentObject private var model: RSSModel
     @State private var currentIndex: Int = 0
     @State private var showContent = false
-    private let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
+    @State private var currentQRCode: CGImage?
+    @State private var qrCodeLink: String?
     private let qrGenerator = QRCodeGenerator()
 
     private var safeNewsCount: Int {
@@ -138,7 +138,7 @@ struct NewsTickerView: View {
 
                             Spacer()
 
-                            if let qrCGImage = qrGenerator.generateQRCode(from: item.link) {
+                            if let qrCGImage = currentQRCode, qrCodeLink == item.link {
                                 VStack(spacing: 6) {
                                     Image(decorative: qrCGImage, scale: 1.0)
                                         .resizable()
@@ -187,35 +187,65 @@ struct NewsTickerView: View {
             withAnimation(Motion.enter) {
                 showContent = true
             }
+            updateQRCode(for: currentItem?.link)
         }
-        .onReceive(timer) { _ in
-            withAnimation(Motion.calm) {
-                if safeNewsCount > 0 {
-                    currentIndex = (currentIndex + 1) % safeNewsCount
+        .task(id: safeNewsCount) {
+            guard safeNewsCount > 1 else { return }
+
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                if Task.isCancelled { return }
+
+                await MainActor.run {
+                    guard safeNewsCount > 1 else { return }
+                    withAnimation(Motion.calm) {
+                        currentIndex = (currentIndex + 1) % safeNewsCount
+                    }
                 }
             }
         }
         .onChange(of: safeNewsCount) { _, newCount in
             guard newCount > 0 else {
                 currentIndex = 0
+                currentQRCode = nil
+                qrCodeLink = nil
                 return
             }
             currentIndex %= newCount
+            updateQRCode(for: currentItem?.link)
         }
-        .animation(Motion.calm, value: currentIndex)
+        .onChange(of: currentItem?.link) { _, newLink in
+            updateQRCode(for: newLink)
+        }
     }
 
     var fallbackBackground: some View {
         LinearGradient(
-            colors: [.purple.opacity(0.3), .blue.opacity(0.3)], startPoint: .topLeading,
+            colors: [
+                Color(red: 0.02, green: 0.12, blue: 0.24).opacity(0.82),
+                Color(red: 0.06, green: 0.2, blue: 0.34).opacity(0.74),
+            ],
+            startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-        .overlay(Color.black.opacity(0.2))
+        .overlay(Color.black.opacity(0.25))
     }
 
     func stripHTML(from string: String) -> String {
         return string.replacingOccurrences(
             of: "<[^>]+>", with: "", options: .regularExpression, range: nil)
+    }
+
+    private func updateQRCode(for link: String?) {
+        guard let link else {
+            qrCodeLink = nil
+            currentQRCode = nil
+            return
+        }
+
+        guard qrCodeLink != link else { return }
+        qrCodeLink = link
+        currentQRCode = qrGenerator.generateQRCode(from: link)
     }
 }
 
@@ -227,7 +257,11 @@ private struct NewsTickerGlassPanel: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.white.opacity(0.04))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

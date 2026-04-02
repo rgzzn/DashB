@@ -39,32 +39,31 @@ class CalendarManager: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
     private var refreshTimer: Timer?
+    private var refreshTask: Task<Void, Never>?
 
     init() {
-        // Reindirizzamento delle modifiche all'UI
-        googleService.objectWillChange
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &cancellables)
-
-        outlookService.objectWillChange
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &cancellables)
-
         googleService.$isConnected
+            .removeDuplicates()
             .receive(on: RunLoop.main)
-            .sink { [weak self] connected in
-                if connected {
-                    print("DEBUG: Google connesso. Fetching...")
-                    self?.fetchEvents()
-                }
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+                self?.fetchEvents()
+            }
+            .store(in: &cancellables)
+
+        outlookService.$isConnected
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+                self?.fetchEvents()
             }
             .store(in: &cancellables)
 
         fetchEvents()
 
         // Aggiorna periodicamente ogni 5 min
+        refreshTimer?.invalidate()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             self?.fetchEvents()
         }
@@ -72,11 +71,19 @@ class CalendarManager: ObservableObject {
 
     deinit {
         refreshTimer?.invalidate()
+        refreshTask?.cancel()
     }
 
     func fetchEvents() {
-        Task {
+        refreshTask?.cancel()
+        refreshTask = Task { [weak self] in
+            guard let self else { return }
             await MainActor.run { self.isRefreshing = true }
+            defer {
+                Task { @MainActor [weak self] in
+                    self?.isRefreshing = false
+                }
+            }
 
             var allEvents: [DashboardEvent] = []
 
@@ -212,12 +219,9 @@ class CalendarManager: ObservableObject {
                 event.endDate >= today && event.startDate < tomorrow
             }
 
+            if Task.isCancelled { return }
             let sorted = filtered.sorted { $0.startDate < $1.startDate }
-
-            await MainActor.run {
-                self.upcomingEvents = sorted
-                self.isRefreshing = false
-            }
+            await MainActor.run { self.upcomingEvents = sorted }
         }
     }
 }

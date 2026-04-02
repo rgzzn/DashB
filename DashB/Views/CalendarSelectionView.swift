@@ -271,7 +271,11 @@ private struct CalendarSelectionPanelStyle: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white.opacity(0.04))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)

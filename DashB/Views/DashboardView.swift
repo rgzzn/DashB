@@ -63,7 +63,6 @@ struct DashboardView: View {
             .padding(.horizontal, 40)
             .frame(maxWidth: .infinity)
         }
-        .animation(Motion.focus, value: isSettingsFocused)
         .onAppear {
             guard !showContent else { return }
             withAnimation(Motion.enter) {
@@ -196,7 +195,11 @@ private struct DashboardGlassPanel: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(.thinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.white.opacity(0.04))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

@@ -19,7 +19,9 @@ struct DeviceLoginView: View {
     @State private var errorMessage: String?
     @State private var successMessage: String?
     @State private var timeRemaining: Int = 0
-    @State private var timer: Timer?
+    @State private var countdownTimer: Timer?
+    @State private var authTask: Task<Void, Never>?
+    @State private var pollingTask: Task<Void, Never>?
     @State private var lastStatus: String = L10n.string("deviceLogin.status.preparing")
     @State private var showContent = false
 
@@ -185,14 +187,18 @@ struct DeviceLoginView: View {
                 showContent = true
             }
         }
+        .onDisappear {
+            cleanupAuthFlow()
+        }
     }
 
     private func startAuth() {
+        cleanupAuthFlow()
         isLoading = true
+        isPolling = false
         errorMessage = nil
         successMessage = nil
         lastStatus = L10n.string("deviceLogin.status.starting")
-        timer?.invalidate()
 
         let missingKeys = Config.missingOAuthKeys(for: service.serviceName)
         guard missingKeys.isEmpty else {
@@ -204,7 +210,7 @@ struct DeviceLoginView: View {
             return
         }
 
-        Task {
+        authTask = Task {
             do {
                 let info = try await withTimeout(seconds: 20) {
                     try await service.startDeviceAuth()
@@ -217,6 +223,7 @@ struct DeviceLoginView: View {
                     self.startPolling()
                 }
             } catch {
+                if Task.isCancelled { return }
                 await MainActor.run {
                     self.errorMessage = friendlyErrorMessage(from: error)
                     self.isLoading = false
@@ -249,11 +256,16 @@ struct DeviceLoginView: View {
     }
 
     private func startCountdown() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+        countdownTimer?.invalidate()
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             if timeRemaining > 0 {
                 timeRemaining -= 1
             } else {
-                timer?.invalidate()
+                countdownTimer?.invalidate()
+                countdownTimer = nil
+                pollingTask?.cancel()
+                pollingTask = nil
+                isPolling = false
                 errorMessage = L10n.string("deviceLogin.error.codeExpired")
             }
         }
@@ -265,35 +277,52 @@ struct DeviceLoginView: View {
 
     private func startPolling() {
         guard let info = authInfo else { return }
+        pollingTask?.cancel()
         isPolling = true
-        Task {
-            while isPolling && timeRemaining > 0 {
+        let pollingIntervalSeconds = max(3, info.interval)
+        pollingTask = Task {
+            while !Task.isCancelled {
+                let remaining = await MainActor.run { self.timeRemaining }
+                let pollingIsActive = await MainActor.run { self.isPolling }
+                guard remaining > 0, pollingIsActive else { return }
+
                 do {
                     await MainActor.run {
                         lastStatus = L10n.string("deviceLogin.status.waitingConfirmation")
                     }
                     let success = try await service.pollForToken(
-                        deviceCode: info.deviceCode, interval: 0)
+                        deviceCode: info.deviceCode, interval: pollingIntervalSeconds)
                     if success {
                         await MainActor.run {
                             self.isPolling = false
                             self.successMessage = L10n.string("deviceLogin.success.connected")
-                            self.timer?.invalidate()
+                            self.countdownTimer?.invalidate()
+                            self.countdownTimer = nil
                             manager.fetchEvents()
                         }
                         return
                     }
                 } catch {
+                    if Task.isCancelled { return }
                     await MainActor.run {
                         self.isPolling = false
                         self.errorMessage = friendlyErrorMessage(from: error)
                     }
                     return
                 }
-                // Usa intervallo di 5 secondi come raccomandato da Google per evitare blocchi slow_down
-                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                try? await Task.sleep(nanoseconds: UInt64(pollingIntervalSeconds) * 1_000_000_000)
             }
         }
+    }
+
+    private func cleanupAuthFlow() {
+        authTask?.cancel()
+        authTask = nil
+        pollingTask?.cancel()
+        pollingTask = nil
+        countdownTimer?.invalidate()
+        countdownTimer = nil
+        isPolling = false
     }
 
     func generateQRCode(from string: String) -> UIImage? {
