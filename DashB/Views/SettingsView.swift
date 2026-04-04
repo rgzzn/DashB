@@ -37,6 +37,9 @@ struct SettingsView: View {
     @State private var tempCity = ""
     @State private var showContent = false
 
+    private let primaryText = Color(red: 0.14, green: 0.20, blue: 0.29)
+    private let secondaryText = Color(red: 0.30, green: 0.38, blue: 0.48)
+
     private var connectedServicesCount: Int {
         [calendarManager.googleService.isConnected, calendarManager.outlookService.isConnected]
             .filter { $0 }
@@ -222,13 +225,13 @@ struct SettingsView: View {
     private var settingsHeader: some View {
         HStack(alignment: .top, spacing: 24) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("settings.title")
+                Text(L10n.string("settings.title"))
                     .font(.system(size: 58, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(primaryText)
 
-                Text("settings.subtitle")
+                Text(L10n.string("settings.subtitle"))
                     .font(.system(size: 22, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(secondaryText)
                     .frame(maxWidth: 840, alignment: .leading)
             }
 
@@ -239,7 +242,7 @@ struct SettingsView: View {
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "xmark")
-                    Text("common.close")
+                    Text(L10n.string("common.close"))
                 }
             }
             .buttonStyle(SettingsAdaptiveGlassButtonStyle(prominent: false))
@@ -301,18 +304,18 @@ struct QuickActionButton: View {
             VStack(alignment: .leading, spacing: 12) {
                 Image(systemName: icon)
                     .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(red: 0.32, green: 0.39, blue: 0.5))
                     .padding(12)
-                    .background(Color.white.opacity(isFocused ? 0.2 : 0.1))
+                    .background(Color.white.opacity(isFocused ? 0.5 : 0.35))
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
                 Text(title)
                     .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(red: 0.16, green: 0.22, blue: 0.31))
 
                 Text("settings.quickAction.subtitle")
                     .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.58))
+                    .foregroundStyle(Color(red: 0.43, green: 0.50, blue: 0.60))
             }
             .frame(maxWidth: .infinity, minHeight: 124, alignment: .leading)
             .padding(18)
@@ -369,23 +372,23 @@ struct SettingsCard<Content: View>: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(title)
                             .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.96))
+                            .foregroundStyle(Color(red: 0.14, green: 0.20, blue: 0.29))
                         Text("settings.card.openAndEdit")
                             .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.52))
+                            .foregroundStyle(Color(red: 0.43, green: 0.50, blue: 0.60))
                     }
 
                     Spacer()
 
                     Image(systemName: "arrow.up.right")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.52))
+                        .foregroundStyle(Color(red: 0.43, green: 0.50, blue: 0.60))
                 }
 
-                Divider().background(Color.white.opacity(0.12))
+                Divider().background(Color(red: 0.80, green: 0.84, blue: 0.90))
 
                 content()
-                    .foregroundStyle(.white.opacity(0.82))
+                    .foregroundStyle(Color(red: 0.20, green: 0.28, blue: 0.38))
 
                 Spacer(minLength: 0)
             }
@@ -425,7 +428,7 @@ struct EditProfileSheet: View {
             VStack(alignment: .leading, spacing: 28) {
                 Text("settings.editProfile.title")
                     .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(red: 0.14, green: 0.20, blue: 0.29))
 
                 TextField("settings.editProfile.namePlaceholder", text: $tempName)
                     .textFieldStyle(.plain)
@@ -469,7 +472,7 @@ struct EditWeatherSheet: View {
             VStack(alignment: .leading, spacing: 30) {
                 Text("settings.editWeather.title")
                     .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(red: 0.14, green: 0.20, blue: 0.29))
 
                 TextField("settings.editWeather.cityPlaceholder", text: $tempCity)
                     .textFieldStyle(.plain)
@@ -500,14 +503,14 @@ struct EditWeatherSheet: View {
                         Text("settings.editWeather.appleWeather")
                     }
                     .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(Color(red: 0.43, green: 0.50, blue: 0.60))
 
                     Button("settings.editWeather.legalAttribution") {
                         showAttributionQR = true
                     }
                     .buttonStyle(.plain)
                     .font(.caption2)
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(Color(red: 0.43, green: 0.50, blue: 0.60))
                     .underline()
                 }
                 .padding(.top, 12)
@@ -553,10 +556,10 @@ struct AccountsSettingsView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("settings.accounts.title")
                             .font(.system(size: 42, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color(red: 0.14, green: 0.20, blue: 0.29))
                         Text("settings.accounts.subtitle")
                             .font(.system(size: 19, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.68))
+                            .foregroundStyle(Color(red: 0.30, green: 0.38, blue: 0.48))
                     }
                     Spacer()
                     Button("common.close") { dismiss() }
@@ -627,14 +630,14 @@ struct AccountsSettingsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
                     .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(red: 0.14, green: 0.20, blue: 0.29))
                 Text(
                     service.isConnected
                         ? L10n.string("settings.accounts.connected")
                         : L10n.string("settings.accounts.notConnected")
                 )
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
-                    .foregroundStyle(service.isConnected ? .green : .white.opacity(0.5))
+                    .foregroundStyle(service.isConnected ? .green : Color(red: 0.43, green: 0.50, blue: 0.60))
             }
 
             Spacer()
@@ -666,17 +669,28 @@ struct AccountsSettingsView: View {
 private struct SettingsAmbientBackdrop: View {
     var body: some View {
         ZStack {
-            Circle()
-                .fill(Color.cyan.opacity(0.16))
-                .frame(width: 680, height: 680)
-                .blur(radius: 120)
-                .offset(x: -440, y: -250)
+            LinearGradient(
+                colors: [
+                    Color(red: 0.91, green: 0.95, blue: 1.0),
+                    Color(red: 0.86, green: 0.91, blue: 0.98),
+                    Color(red: 0.95, green: 0.97, blue: 1.0),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
             Circle()
-                .fill(Color.blue.opacity(0.14))
-                .frame(width: 560, height: 560)
-                .blur(radius: 100)
-                .offset(x: 540, y: -220)
+                .fill(Color.cyan.opacity(0.12))
+                .frame(width: 740, height: 740)
+                .blur(radius: 160)
+                .offset(x: -480, y: -280)
+
+            Circle()
+                .fill(Color.white.opacity(0.7))
+                .frame(width: 640, height: 640)
+                .blur(radius: 140)
+                .offset(x: 560, y: -250)
         }
         .ignoresSafeArea()
     }
@@ -697,7 +711,7 @@ private struct SettingsHeroPanel: View {
                 .overlay {
                     Image(systemName: symbol)
                         .font(.system(size: 30, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color(red: 0.35, green: 0.42, blue: 0.52))
                 }
                 .modifier(
                     SettingsGlassPanel(
@@ -711,13 +725,13 @@ private struct SettingsHeroPanel: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(eyebrow.uppercased())
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(Color(red: 0.43, green: 0.50, blue: 0.60))
                 Text(title)
                     .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(red: 0.14, green: 0.20, blue: 0.29))
                 Text(detail)
                     .font(.system(size: 16, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.66))
+                    .foregroundStyle(Color(red: 0.30, green: 0.38, blue: 0.48))
                     .lineLimit(2)
             }
 
@@ -744,12 +758,12 @@ private struct SettingsValueStack: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(primary)
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.96))
+                .foregroundStyle(Color(red: 0.14, green: 0.20, blue: 0.29))
                 .lineLimit(2)
 
             Text(secondary)
                 .font(.system(size: 15, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.58))
+                .foregroundStyle(Color(red: 0.43, green: 0.50, blue: 0.60))
                 .lineLimit(2)
         }
     }
@@ -767,13 +781,13 @@ private struct SettingsStatusRow: View {
 
             Text(title)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.88))
+                .foregroundStyle(Color(red: 0.20, green: 0.28, blue: 0.38))
 
             Spacer()
 
             Text(L10n.string(isActive ? "settings.status.active" : "settings.status.offline"))
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(Color(red: 0.43, green: 0.50, blue: 0.60))
         }
     }
 }
@@ -844,23 +858,23 @@ private struct SettingsGlassPanel: ViewModifier {
 
     private var baseFillColor: Color {
         if isFocused {
-            return Color(red: 0.12, green: 0.17, blue: 0.26).opacity(0.88)
+            return Color.white.opacity(0.52)
         }
-        return Color.white.opacity(0.06)
+        return Color.white.opacity(0.24)
     }
 
     private var borderColor: Color {
         if isFocused {
-            return Color.cyan.opacity(0.55)
+            return Color(red: 0.62, green: 0.76, blue: 0.95)
         }
-        return Color.white.opacity(0.12)
+        return Color.white.opacity(0.55)
     }
 
     private var shadowColor: Color {
         if isFocused {
-            return Color.cyan.opacity(0.12)
+            return Color(red: 0.61, green: 0.73, blue: 0.90).opacity(0.26)
         }
-        return Color.black.opacity(0.22)
+        return Color(red: 0.61, green: 0.73, blue: 0.90).opacity(0.18)
     }
 }
 
