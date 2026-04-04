@@ -9,7 +9,9 @@ import SwiftUI
 
 struct CalendarView: View {
     @EnvironmentObject var manager: CalendarManager
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showContent = false
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
     private static let sectionDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE d MMMM"
@@ -51,7 +53,7 @@ struct CalendarView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(Array(grouped.enumerated()), id: \.element.0) { index, entry in
+                    ForEach(Array(grouped.enumerated()), id: \.element.0) { _, entry in
                         let date = entry.0
                         let events = entry.1
                         VStack(alignment: .leading, spacing: 8) {
@@ -74,13 +76,6 @@ struct CalendarView: View {
                             }
                         }
                         .padding(.bottom, 10)
-                        .opacity(showContent ? 1 : 0)
-                        .offset(y: showContent ? 0 : 8)
-                        .scaleEffect(showContent ? 1 : 0.99, anchor: .topLeading)
-                        .animation(
-                            Motion.enter.delay(Double(index) * 0.05),
-                            value: showContent
-                        )
                     }
 
                     if grouped.isEmpty {
@@ -88,10 +83,10 @@ struct CalendarView: View {
                             Spacer()
                             Image(systemName: "calendar.badge.clock")
                                 .font(.system(size: 40))
-                                .foregroundColor(.white.opacity(0.3))
+                                .foregroundColor(theme.tertiaryText)
                             Text("calendar.empty")
                                 .font(.body)
-                                .foregroundColor(.white.opacity(0.5))
+                                .foregroundColor(theme.secondaryText)
                                 .multilineTextAlignment(.center)
                             Spacer()
                         }
@@ -104,7 +99,7 @@ struct CalendarView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)  // Align top
-        .modifier(CalendarGlassPanel(cornerRadius: 30, tint: .white))
+        .modifier(CalendarGlassPanel(cornerRadius: 30, tint: theme.glassTint))
         .opacity(showContent ? 1 : 0)
         .offset(y: showContent ? 0 : 10)
         .animation(Motion.enter, value: showContent)
@@ -128,7 +123,7 @@ struct CalendarView: View {
                 .font(.system(size: 15))
                 .foregroundColor(event.color)  // Icon color matches event
                 .padding(6)
-                .background(Circle().fill(Color.white.opacity(0.2)))
+                .background(Circle().fill(theme.panelFill))
 
             Text(event.title)
                 .font(.system(size: 25, weight: .semibold))
@@ -150,7 +145,6 @@ struct CalendarView: View {
         .cornerRadius(8)  // Smaller radius for items
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(L10n.string("calendar.accessibility.allDay", event.title))
-        .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 
     // MARK: - Evento con Orario (Vertical Bar Style)
@@ -216,13 +210,14 @@ struct CalendarView: View {
                 .stroke(event.color.opacity(0.3), lineWidth: 1)  // Optional border for better definition
         )
         .shadow(color: event.color.opacity(0.12), radius: 12, y: 6)
-        .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 }
 
 private struct CalendarGlassPanel: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let cornerRadius: CGFloat
     let tint: Color
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
 
     func body(content: Content) -> some View {
         content
@@ -232,18 +227,18 @@ private struct CalendarGlassPanel: ViewModifier {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Color.white.opacity(0.04))
+                    .fill(theme.panelFill)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    .stroke(theme.panelStroke, lineWidth: 1)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.05),
+                                theme.primaryText.opacity(0.05),
                                 .clear,
                                 tint.opacity(0.04),
                             ],
@@ -254,7 +249,7 @@ private struct CalendarGlassPanel: ViewModifier {
             }
             .calendarLiquidGlass(cornerRadius: cornerRadius, tint: tint)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(color: .black.opacity(0.24), radius: 24, y: 12)
+            .shadow(color: theme.panelShadow, radius: 24, y: 12)
     }
 }
 

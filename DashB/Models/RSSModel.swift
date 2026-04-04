@@ -178,7 +178,10 @@ class RSSModel: ObservableObject {
                 return date1 > date2
             }
 
-            self.newsItems = Array(sortedItems.prefix(50))  // Mantieni i primi 50 elementi
+            let nextItems = Array(sortedItems.prefix(50))
+            if self.newsItems != nextItems {
+                self.newsItems = nextItems  // Mantieni i primi 50 elementi
+            }
             await self.enrichNewsItemsWithImages()
         }
     }

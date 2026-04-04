@@ -28,11 +28,15 @@ struct QRCodeGenerator {
 
 struct NewsTickerView: View {
     @EnvironmentObject private var model: RSSModel
+    @Environment(\.colorScheme) private var colorScheme
     @State private var currentIndex: Int = 0
     @State private var showContent = false
     @State private var currentQRCode: CGImage?
     @State private var qrCodeLink: String?
+    @State private var strippedDescription = ""
     private let qrGenerator = QRCodeGenerator()
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
+    private var overlayBaseColor: Color { colorScheme == .dark ? .black : .white }
 
     private var safeNewsCount: Int {
         model.newsItems.count
@@ -60,7 +64,7 @@ struct NewsTickerView: View {
                                         .aspectRatio(contentMode: .fill)
                                         .frame(width: geo.size.width, height: geo.size.height)
                                         .clipped()
-                                        .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                                        .transition(.opacity)
                                 case .empty, .failure:
                                     fallbackBackground
                                 @unknown default:
@@ -72,7 +76,7 @@ struct NewsTickerView: View {
                         }
 
                         LinearGradient(
-                            gradient: Gradient(colors: [.black.opacity(0.92), .transparent]),
+                            gradient: Gradient(colors: [overlayBaseColor.opacity(0.88), .transparent]),
                             startPoint: .bottom, endPoint: .top
                         )
 
@@ -102,15 +106,15 @@ struct NewsTickerView: View {
                                 Text(item.title)
                                     .font(.title3)
                                     .fontWeight(.bold)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(theme.primaryText)
                                     .lineLimit(3)
                                     .minimumScaleFactor(0.7)
                                     .fixedSize(horizontal: false, vertical: true)
                                     .contentTransition(.opacity)
 
-                                Text(stripHTML(from: item.description))
+                                Text(strippedDescription)
                                     .font(.body)
-                                    .foregroundColor(.white.opacity(0.8))
+                                    .foregroundColor(theme.secondaryText)
                                     .lineLimit(3)
                                     .minimumScaleFactor(0.8)
                                     .contentTransition(.opacity)
@@ -118,7 +122,7 @@ struct NewsTickerView: View {
                                 HStack {
                                     Text(item.pubDate)
                                         .font(.caption)
-                                        .foregroundColor(.white.opacity(0.6))
+                                        .foregroundColor(theme.tertiaryText)
                                     Spacer()
                                     HStack(spacing: 6) {
                                         let pageCount = min(model.newsItems.count, 5)
@@ -129,7 +133,7 @@ struct NewsTickerView: View {
                                                 .foregroundColor(
                                                     index
                                                         == (currentIndex % pageCount)
-                                                        ? .white : .white.opacity(0.3))
+                                                        ? theme.primaryText : theme.tertiaryText)
                                         }
                                     }
                                 }
@@ -157,7 +161,7 @@ struct NewsTickerView: View {
 
                                     Text("news.scan")
                                         .font(.caption2)
-                                        .foregroundColor(.white.opacity(0.8))
+                                        .foregroundColor(theme.secondaryText)
                                 }
                                 .padding(.leading, 10)
                                 .transition(.opacity.combined(with: .scale(scale: 0.96)))
@@ -170,23 +174,23 @@ struct NewsTickerView: View {
                     }
                 }
                 .transition(.opacity.combined(with: .scale(scale: 0.985)))
-                .id(item.id)
             } else {
                 ZStack {
                     Color.black.opacity(0.3)
                     ProgressView("news.loading")
-                        .foregroundColor(.white)
+                        .foregroundColor(theme.primaryText)
                 }
                 .transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .modifier(NewsTickerGlassPanel(cornerRadius: 30, tint: .white))
+        .modifier(NewsTickerGlassPanel(cornerRadius: 30, tint: theme.glassTint))
         .onAppear {
             guard !showContent else { return }
             withAnimation(Motion.enter) {
                 showContent = true
             }
+            strippedDescription = stripHTML(from: currentItem?.description ?? "")
             updateQRCode(for: currentItem?.link)
         }
         .task(id: safeNewsCount) {
@@ -216,6 +220,9 @@ struct NewsTickerView: View {
         }
         .onChange(of: currentItem?.link) { _, newLink in
             updateQRCode(for: newLink)
+        }
+        .onChange(of: currentItem?.id) { _, _ in
+            strippedDescription = stripHTML(from: currentItem?.description ?? "")
         }
     }
 
@@ -250,8 +257,10 @@ struct NewsTickerView: View {
 }
 
 private struct NewsTickerGlassPanel: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let cornerRadius: CGFloat
     let tint: Color
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
 
     func body(content: Content) -> some View {
         content
@@ -261,18 +270,18 @@ private struct NewsTickerGlassPanel: ViewModifier {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Color.white.opacity(0.04))
+                    .fill(theme.panelFill)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    .stroke(theme.panelStroke, lineWidth: 1)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.04),
+                                theme.primaryText.opacity(0.04),
                                 .clear,
                                 tint.opacity(0.04),
                             ],
@@ -283,7 +292,7 @@ private struct NewsTickerGlassPanel: ViewModifier {
             }
             .newsTickerLiquidGlass(cornerRadius: cornerRadius, tint: tint)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(color: .black.opacity(0.24), radius: 24, y: 12)
+            .shadow(color: theme.panelShadow, radius: 24, y: 12)
     }
 }
 

@@ -22,6 +22,9 @@ struct DashboardView: View {
     @AppStorage("showGreeting") private var showGreeting = true
 
     @FocusState private var isSettingsFocused: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
 
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -82,7 +85,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(greetingText)
                     .font(.system(size: 48, weight: .light, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .contentTransition(.opacity)
@@ -90,7 +93,7 @@ struct DashboardView: View {
 
                 Text(weatherModel.weatherAdvice)
                     .font(.title3)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(theme.secondaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .contentTransition(.opacity)
@@ -105,8 +108,8 @@ struct DashboardView: View {
                 .modifier(
                     DashboardGlassPanel(
                         cornerRadius: 28,
-                        tint: .white.opacity(0.03),
-                        glassTint: .white
+                        tint: theme.panelFill,
+                        glassTint: theme.glassTint
                     )
                 )
         }
@@ -165,19 +168,19 @@ private struct DashboardAmbientBackdrop: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color.cyan.opacity(0.18))
+                .fill(Color.cyan.opacity(0.14))
                 .frame(width: 720, height: 720)
                 .blur(radius: 140)
                 .offset(x: -430, y: -260)
 
             Circle()
-                .fill(Color.blue.opacity(0.16))
+                .fill(Color.blue.opacity(0.12))
                 .frame(width: 620, height: 620)
                 .blur(radius: 120)
                 .offset(x: 520, y: -240)
 
             Circle()
-                .fill(Color.white.opacity(0.08))
+                .fill(Color.white.opacity(0.05))
                 .frame(width: 520, height: 520)
                 .blur(radius: 90)
                 .offset(x: 460, y: 280)
@@ -187,9 +190,11 @@ private struct DashboardAmbientBackdrop: View {
 }
 
 private struct DashboardGlassPanel: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let cornerRadius: CGFloat
     var tint: Color = .clear
     var glassTint: Color = .white
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
 
     func body(content: Content) -> some View {
         content
@@ -199,11 +204,11 @@ private struct DashboardGlassPanel: ViewModifier {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Color.white.opacity(0.04))
+                    .fill(theme.panelFill)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    .stroke(theme.panelStroke, lineWidth: 1)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -214,8 +219,8 @@ private struct DashboardGlassPanel: ViewModifier {
                     .strokeBorder(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.18),
-                                Color.white.opacity(0.06),
+                                theme.primaryText.opacity(0.18),
+                                theme.primaryText.opacity(0.06),
                                 .clear,
                             ],
                             startPoint: .topLeading,
@@ -229,7 +234,7 @@ private struct DashboardGlassPanel: ViewModifier {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.05),
+                                theme.primaryText.opacity(0.05),
                                 .clear,
                                 glassTint.opacity(0.03),
                             ],
@@ -239,7 +244,7 @@ private struct DashboardGlassPanel: ViewModifier {
                     )
             }
             .dashboardLiquidGlass(cornerRadius: cornerRadius, tint: glassTint)
-            .shadow(color: .black.opacity(0.24), radius: 28, y: 12)
+            .shadow(color: theme.panelShadow, radius: 28, y: 12)
     }
 }
 

@@ -9,9 +9,11 @@ import SwiftUI
 
 struct WeatherView: View {
     @EnvironmentObject private var model: WeatherModel
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showContent = false
 
     private let panelShape = RoundedRectangle(cornerRadius: 30, style: .continuous)
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
 
     var body: some View {
         ZStack {
@@ -19,27 +21,27 @@ struct WeatherView: View {
                 .fill(.ultraThinMaterial)
                 .overlay(
                     panelShape
-                        .fill(Color.white.opacity(0.04))
+                        .fill(theme.panelFill)
                 )
                 .overlay(
                     panelShape
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        .stroke(theme.panelStroke, lineWidth: 1)
                 )
                 .overlay {
                     panelShape
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.05),
+                                    theme.primaryText.opacity(0.05),
                                     .clear,
-                                    Color.white.opacity(0.04),
+                                    theme.primaryText.opacity(0.04),
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
                 }
-                .weatherLiquidGlass(cornerRadius: 30, tint: .white)
+                .weatherLiquidGlass(cornerRadius: 30, tint: theme.glassTint)
 
             weatherContent
                 .padding(24)
@@ -49,7 +51,7 @@ struct WeatherView: View {
                 .animation(Motion.enter, value: showContent)
         }
         .clipShape(panelShape)
-        .shadow(color: .black.opacity(0.24), radius: 24, y: 12)
+        .shadow(color: theme.panelShadow, radius: 24, y: 12)
         .onAppear {
             guard !showContent else { return }
             withAnimation(Motion.enter) {
@@ -63,7 +65,7 @@ struct WeatherView: View {
             currentConditions
             hourlySection
             Divider()
-                .background(Color.white.opacity(0.2))
+                .background(theme.panelStroke)
             dailySection
         }
     }
@@ -82,13 +84,13 @@ struct WeatherView: View {
             VStack(alignment: .trailing, spacing: -5) {
                 Text(model.currentTemp)
                     .font(.system(size: 64, weight: .light))
-                    .foregroundColor(.white)
+                    .foregroundColor(theme.primaryText)
                     .contentTransition(.numericText())
                     .animation(Motion.calm, value: model.currentTemp)
 
                 Text(model.conditionDescription)
                     .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(theme.secondaryText)
                     .contentTransition(.opacity)
                     .animation(Motion.calm, value: model.conditionDescription)
             }
@@ -101,14 +103,14 @@ struct WeatherView: View {
             Text("weather.section.hourly")
                 .font(.caption)
                 .fontWeight(.semibold)
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(theme.secondaryText)
 
             HStack(spacing: 20) {
                 ForEach(model.hourlyForecast) { forecast in
                     VStack(spacing: 8) {
                         Text(forecast.time)
                             .font(.caption2)
-                            .foregroundColor(.white.opacity(0.6))
+                            .foregroundColor(theme.tertiaryText)
 
                         Image(systemName: forecast.icon)
                             .font(.title3)
@@ -117,7 +119,7 @@ struct WeatherView: View {
                         Text(forecast.temp)
                             .font(.callout)
                             .fontWeight(.medium)
-                            .foregroundColor(.white)
+                            .foregroundColor(theme.primaryText)
                     }
                     .frame(minWidth: 40)
                 }
@@ -133,14 +135,14 @@ struct WeatherView: View {
             Text("weather.section.daily")
                 .font(.caption)
                 .fontWeight(.semibold)
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(theme.secondaryText)
 
             VStack(spacing: 8) {
                 ForEach(model.dailyForecast) { day in
                     HStack {
                         Text(day.day)
                             .font(.callout)
-                            .foregroundStyle(.white.opacity(0.8))
+                            .foregroundStyle(theme.secondaryText)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                         Image(systemName: day.icon)
@@ -156,13 +158,13 @@ struct WeatherView: View {
                                 .minimumScaleFactor(0.7)
 
                             Text(day.tempLow)
-                                .foregroundStyle(.white.opacity(0.5))
+                                .foregroundStyle(theme.tertiaryText)
                                 .frame(width: 45, alignment: .trailing)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
                         }
                         .font(.callout)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(theme.primaryText)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }

@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct ClockView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showContent = false
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -26,7 +27,7 @@ struct ClockView: View {
             VStack(alignment: .trailing) {
                 Text(timeline.date, style: .time)
                     .font(.system(size: 80, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white)
+                    .foregroundColor(DashboardTheme(scheme: colorScheme).primaryText)
                     .shadow(radius: 5)
                     .contentTransition(.numericText())
                     .lineLimit(1)
@@ -34,7 +35,7 @@ struct ClockView: View {
 
                 Text(dateString(for: timeline.date))
                     .font(.system(size: 30, weight: .medium, design: .default))
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundColor(DashboardTheme(scheme: colorScheme).secondaryText)
                     .shadow(radius: 3)
                     .contentTransition(.opacity)
                     .lineLimit(1)
