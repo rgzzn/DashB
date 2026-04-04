@@ -46,7 +46,6 @@ class CalendarManager: ObservableObject {
             .removeDuplicates()
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                self?.objectWillChange.send()
                 self?.fetchEvents()
             }
             .store(in: &cancellables)
@@ -55,7 +54,6 @@ class CalendarManager: ObservableObject {
             .removeDuplicates()
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                self?.objectWillChange.send()
                 self?.fetchEvents()
             }
             .store(in: &cancellables)
