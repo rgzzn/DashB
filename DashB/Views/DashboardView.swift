@@ -65,18 +65,25 @@ struct DashboardView: View {
             }
             .padding(.horizontal, 40)
             .frame(maxWidth: .infinity)
+
+            if showingSettings {
+                SettingsView {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showingSettings = false
+                    }
+                }
+                .environmentObject(weatherModel)
+                .environmentObject(calendarManager)
+                .environmentObject(rssModel)
+                .transition(.opacity)
+                .zIndex(1)
+            }
         }
         .onAppear {
             guard !showContent else { return }
             withAnimation(Motion.enter) {
                 showContent = true
             }
-        }
-        .fullScreenCover(isPresented: $showingSettings) {
-            SettingsView()
-                .environmentObject(weatherModel)
-                .environmentObject(calendarManager)
-                .environmentObject(rssModel)
         }
     }
 
@@ -144,7 +151,9 @@ struct DashboardView: View {
             Spacer()
 
             Button {
-                showingSettings = true
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showingSettings = true
+                }
             } label: {
                 Label("dashboard.settings", systemImage: "gearshape.fill")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
@@ -200,7 +209,7 @@ private struct DashboardGlassPanel: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(.thinMaterial)
+                    .fill(theme.panelMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -243,12 +252,11 @@ private struct DashboardGlassPanel: ViewModifier {
                         )
                     )
             }
-            .dashboardLiquidGlass(cornerRadius: cornerRadius, tint: glassTint)
             .shadow(color: theme.panelShadow, radius: 28, y: 12)
     }
 }
 
-private struct DashboardAdaptiveGlassButtonStyle: PrimitiveButtonStyle {
+struct DashboardAdaptiveGlassButtonStyle: PrimitiveButtonStyle {
     let prominent: Bool
 
     func makeBody(configuration: Configuration) -> some View {
@@ -269,17 +277,6 @@ private struct DashboardAdaptiveGlassButtonStyle: PrimitiveButtonStyle {
                 configuration.label
             }
             .buttonStyle(PremiumButtonStyle())
-        }
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func dashboardLiquidGlass(cornerRadius: CGFloat, tint: Color = .white) -> some View {
-        if #available(tvOS 26.0, iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *) {
-            self.glassEffect(.regular.tint(tint.opacity(0.1)), in: .rect(cornerRadius: cornerRadius))
-        } else {
-            self
         }
     }
 }

@@ -18,7 +18,7 @@ struct WeatherView: View {
     var body: some View {
         ZStack {
             panelShape
-                .fill(.ultraThinMaterial)
+                .fill(theme.panelMaterial)
                 .overlay(
                     panelShape
                         .fill(theme.panelFill)
@@ -41,7 +41,6 @@ struct WeatherView: View {
                             )
                         )
                 }
-                .weatherLiquidGlass(cornerRadius: 30, tint: theme.glassTint)
 
             weatherContent
                 .padding(24)
@@ -172,17 +171,6 @@ struct WeatherView: View {
         }
         .transaction { transaction in
             transaction.animation = nil
-        }
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func weatherLiquidGlass(cornerRadius: CGFloat, tint: Color) -> some View {
-        if #available(tvOS 26.0, iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *) {
-            self.glassEffect(.regular.tint(tint.opacity(0.1)), in: .rect(cornerRadius: cornerRadius))
-        } else {
-            self
         }
     }
 }

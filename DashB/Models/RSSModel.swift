@@ -137,7 +137,9 @@ class RSSModel: ObservableObject {
         timer?.invalidate()
         // Aggiorna il feed ogni 15 minuti
         timer = Timer.scheduledTimer(withTimeInterval: 900, repeats: true) { [weak self] _ in
-            self?.fetchNews()
+            Task { @MainActor [weak self] in
+                self?.fetchNews()
+            }
         }
     }
 

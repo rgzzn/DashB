@@ -266,7 +266,7 @@ private struct NewsTickerGlassPanel: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                    .fill(theme.panelMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -290,20 +290,8 @@ private struct NewsTickerGlassPanel: ViewModifier {
                         )
                     )
             }
-            .newsTickerLiquidGlass(cornerRadius: cornerRadius, tint: tint)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .shadow(color: theme.panelShadow, radius: 24, y: 12)
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func newsTickerLiquidGlass(cornerRadius: CGFloat, tint: Color) -> some View {
-        if #available(tvOS 26.0, iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *) {
-            self.glassEffect(.regular.tint(tint.opacity(0.1)), in: .rect(cornerRadius: cornerRadius))
-        } else {
-            self
-        }
     }
 }
 

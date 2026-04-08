@@ -12,6 +12,8 @@ struct SettingsView: View {
     @EnvironmentObject var calendarManager: CalendarManager
     @EnvironmentObject var rssModel: RSSModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    private let onClose: (() -> Void)?
 
     // Navigation State
     @State private var navigationPath = NavigationPath()
@@ -35,7 +37,18 @@ struct SettingsView: View {
 
     @State private var showingEditWeather = false
     @State private var tempCity = ""
-    @State private var showContent = false
+
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
+    private var headerPrimaryText: Color {
+        colorScheme == .dark ? Color.white.opacity(0.99) : theme.primaryText
+    }
+    private var headerSecondaryText: Color {
+        colorScheme == .dark ? Color.white.opacity(0.86) : theme.secondaryText
+    }
+
+    init(onClose: (() -> Void)? = nil) {
+        self.onClose = onClose
+    }
 
     private var connectedServicesCount: Int {
         [calendarManager.googleService.isConnected, calendarManager.outlookService.isConnected]
@@ -67,14 +80,16 @@ struct SettingsView: View {
         QuickActionButton(
             icon: "antenna.radiowaves.left.and.right", title: L10n.string("settings.quickAction.refreshRSS")
         ) {
-            rssModel.fetchNews()
+            Task { @MainActor in
+                rssModel.fetchNews()
+            }
         }
 
         QuickActionButton(
             icon: "sparkles.rectangle.stack", title: L10n.string("settings.quickAction.reviewTour")
         ) {
             hasCompletedOnboarding = false
-            dismiss()
+            closeView()
         }
     }
 
@@ -183,9 +198,6 @@ struct SettingsView: View {
                         }
                     }
                 }
-                .opacity(showContent ? 1 : 0)
-                .offset(y: showContent ? 0 : 16)
-                .animation(Motion.enter, value: showContent)
             }
             .navigationDestination(for: SettingsDestination.self) { dest in
                 switch dest {
@@ -210,36 +222,30 @@ struct SettingsView: View {
                 DeviceLoginView(service: item.service)
                     .environmentObject(calendarManager)
             }
-            .onAppear {
-                guard !showContent else { return }
-                withAnimation(Motion.enter) {
-                    showContent = true
-                }
-            }
         }
     }
 
     private var settingsHeader: some View {
         HStack(alignment: .top, spacing: 24) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("settings.title")
+                Text(L10n.string("settings.title"))
                     .font(.system(size: 58, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(headerPrimaryText)
 
-                Text("settings.subtitle")
+                Text(L10n.string("settings.subtitle"))
                     .font(.system(size: 22, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(headerSecondaryText)
                     .frame(maxWidth: 840, alignment: .leading)
             }
 
             Spacer()
 
             Button {
-                dismiss()
+                closeView()
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "xmark")
-                    Text("common.close")
+                    Text(L10n.string("common.close"))
                 }
             }
             .buttonStyle(SettingsAdaptiveGlassButtonStyle(prominent: false))
@@ -278,11 +284,37 @@ struct SettingsView: View {
         }
         .padding(.horizontal, 40)
     }
+
+    private func closeView() {
+        if let onClose {
+            onClose()
+        } else {
+            dismiss()
+        }
+    }
 }
 
 enum SettingsDestination: Hashable {
     case agenda
     case news
+}
+
+private struct SettingsButtonPalette {
+    let primary: Color
+    let secondary: Color
+    let divider: Color
+
+    init(colorScheme: ColorScheme) {
+        if colorScheme == .dark {
+            primary = Color.white.opacity(0.98)
+            secondary = Color.white.opacity(0.86)
+            divider = Color.white.opacity(0.2)
+        } else {
+            primary = Color(red: 0.08, green: 0.09, blue: 0.12)
+            secondary = Color(red: 0.42, green: 0.45, blue: 0.5)
+            divider = Color.black.opacity(0.08)
+        }
+    }
 }
 
 // MARK: - Subviews & Components
@@ -294,42 +326,55 @@ struct QuickActionButton: View {
     let title: String
     let action: () -> Void
 
-    @Environment(\.isFocused) private var isFocused
+    @FocusState private var isFocused: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
+    private var palette: SettingsButtonPalette { SettingsButtonPalette(colorScheme: colorScheme) }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(palette.primary)
+                .padding(12)
+                .background(theme.subtleFill.opacity(isFocused ? 1.4 : 1))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            Text(title)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.primary)
+
+            Text("settings.quickAction.subtitle")
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(palette.secondary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 124, alignment: .leading)
+        .padding(18)
+        .scaleEffect(isFocused ? 1.02 : 1)
+        .zIndex(isFocused ? 20 : 0)
+        .modifier(
+            SettingsGlassPanel(
+                cornerRadius: 22,
+                tint: isFocused
+                    ? Color.cyan.opacity(0.08) : .clear,
+                isInteractive: true,
+                isFocused: isFocused
+            )
+        )
+    }
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(12)
-                    .background(Color.white.opacity(isFocused ? 0.2 : 0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-                Text(title)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-
-                Text("settings.quickAction.subtitle")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.58))
-            }
-            .frame(maxWidth: .infinity, minHeight: 124, alignment: .leading)
-            .padding(18)
-            .modifier(
-                SettingsGlassPanel(
-                    cornerRadius: 22,
-                    tint: isFocused
-                        ? Color.cyan.opacity(0.08) : .clear,
-                    isInteractive: true,
-                    isFocused: isFocused
-                )
-            )
-        }
-        .dashBDisableSystemFocusEffect()
         #if os(tvOS)
-            .buttonStyle(.plain)
+            content
+                .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .focusable(interactions: .activate)
+                .focused($isFocused)
+                .onTapGesture(perform: action)
+                .accessibilityAddTraits(.isButton)
         #else
+            Button(action: action) {
+                content
+            }
             .buttonStyle(.plain)
         #endif
     }
@@ -353,62 +398,76 @@ struct SettingsCard<Content: View>: View {
         self.content = content
     }
 
-    @Environment(\.isFocused) private var isFocused
+    @FocusState private var isFocused: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
+    private var palette: SettingsButtonPalette { SettingsButtonPalette(colorScheme: colorScheme) }
 
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .top) {
-                    Image(systemName: icon)
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(12)
-                        .background(color.opacity(isFocused ? 0.42 : 0.24))
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    private var contentView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(palette.primary)
+                    .padding(12)
+                    .background(color.opacity(isFocused ? 0.42 : 0.24))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(title)
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.96))
-                        Text("settings.card.openAndEdit")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.52))
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.52))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.primary)
+                    Text("settings.card.openAndEdit")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(palette.secondary)
                 }
 
-                Divider().background(Color.white.opacity(0.12))
+                Spacer()
 
-                content()
-                    .foregroundStyle(.white.opacity(0.82))
-
-                Spacer(minLength: 0)
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(palette.secondary)
             }
-            .padding(22)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 210)
-            .modifier(
-                SettingsGlassPanel(
-                    cornerRadius: 26,
-                    tint: color.opacity(isFocused ? 0.12 : 0.06),
-                    isInteractive: true,
-                    isFocused: isFocused
-                )
-            )
+
+            Divider().background(palette.divider)
+
+            content()
+                .foregroundStyle(palette.secondary)
+
+            Spacer(minLength: 0)
         }
-        .dashBDisableSystemFocusEffect()
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 210)
+        .scaleEffect(isFocused ? 1.02 : 1)
+        .zIndex(isFocused ? 20 : 0)
+        .modifier(
+            SettingsGlassPanel(
+                cornerRadius: 26,
+                tint: color.opacity(isFocused ? 0.12 : 0.06),
+                isInteractive: true,
+                isFocused: isFocused
+            )
+        )
+    }
+
+    var body: some View {
         #if os(tvOS)
-            .buttonStyle(.plain)
+            contentView
+                .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                .focusable(interactions: .activate)
+                .focused($isFocused)
+                .onTapGesture(perform: action)
+                .accessibilityAddTraits(.isButton)
         #else
+            Button(action: action) {
+                contentView
+            }
             .buttonStyle(.plain)
         #endif
     }
 }
+
 
 // MARK: - Edit Sheets
 
@@ -417,6 +476,8 @@ struct EditProfileSheet: View {
     @Binding var showGreeting: Bool
     @Binding var isPresented: Bool
     @State private var tempName: String = ""
+    @Environment(\.colorScheme) private var colorScheme
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
 
     var body: some View {
         ZStack {
@@ -425,7 +486,7 @@ struct EditProfileSheet: View {
             VStack(alignment: .leading, spacing: 28) {
                 Text("settings.editProfile.title")
                     .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.primaryText)
 
                 TextField("settings.editProfile.namePlaceholder", text: $tempName)
                     .textFieldStyle(.plain)
@@ -448,7 +509,7 @@ struct EditProfileSheet: View {
             }
             .padding(50)
             .frame(maxWidth: 760)
-            .modifier(SettingsGlassPanel(cornerRadius: 30, tint: .white.opacity(0.04)))
+            .modifier(SettingsGlassPanel(cornerRadius: 30, tint: theme.elevatedTint))
             .padding(40)
         }
         .onAppear { tempName = userName }
@@ -461,6 +522,8 @@ struct EditWeatherSheet: View {
     @EnvironmentObject var weatherModel: WeatherModel
     @State private var showAttributionQR = false
     @State private var tempCity: String = ""
+    @Environment(\.colorScheme) private var colorScheme
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
 
     var body: some View {
         ZStack {
@@ -469,7 +532,7 @@ struct EditWeatherSheet: View {
             VStack(alignment: .leading, spacing: 30) {
                 Text("settings.editWeather.title")
                     .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.primaryText)
 
                 TextField("settings.editWeather.cityPlaceholder", text: $tempCity)
                     .textFieldStyle(.plain)
@@ -500,21 +563,19 @@ struct EditWeatherSheet: View {
                         Text("settings.editWeather.appleWeather")
                     }
                     .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(theme.secondaryText)
 
                     Button("settings.editWeather.legalAttribution") {
                         showAttributionQR = true
                     }
-                    .buttonStyle(.plain)
                     .font(.caption2)
-                    .foregroundColor(.white.opacity(0.5))
-                    .underline()
+                    .buttonStyle(SettingsAdaptiveGlassButtonStyle(prominent: false))
                 }
                 .padding(.top, 12)
             }
             .padding(50)
             .frame(maxWidth: 760)
-            .modifier(SettingsGlassPanel(cornerRadius: 30, tint: .white.opacity(0.04)))
+            .modifier(SettingsGlassPanel(cornerRadius: 30, tint: theme.elevatedTint))
             .padding(40)
         }
         .onAppear { tempCity = city }
@@ -531,6 +592,7 @@ struct EditWeatherSheet: View {
 struct AccountsSettingsView: View {
     @EnvironmentObject var calendarManager: CalendarManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     // Auth State for this view
     @State private var authServiceItem: SettingsView.AuthServiceItem?
@@ -540,6 +602,8 @@ struct AccountsSettingsView: View {
         case google, outlook
         var id: Int { self.hashValue }
     }
+
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
 
     var body: some View {
         ZStack {
@@ -553,10 +617,10 @@ struct AccountsSettingsView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("settings.accounts.title")
                             .font(.system(size: 42, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(theme.primaryText)
                         Text("settings.accounts.subtitle")
                             .font(.system(size: 19, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.68))
+                            .foregroundStyle(theme.secondaryText)
                     }
                     Spacer()
                     Button("common.close") { dismiss() }
@@ -621,20 +685,20 @@ struct AccountsSettingsView: View {
                 .overlay {
                     Image(systemName: icon)
                         .font(.system(size: 38, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(theme.primaryText)
                 }
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
                     .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.primaryText)
                 Text(
                     service.isConnected
                         ? L10n.string("settings.accounts.connected")
                         : L10n.string("settings.accounts.notConnected")
                 )
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
-                    .foregroundStyle(service.isConnected ? .green : .white.opacity(0.5))
+                    .foregroundStyle(service.isConnected ? .green : theme.tertiaryText)
             }
 
             Spacer()
@@ -649,7 +713,7 @@ struct AccountsSettingsView: View {
                     Button("settings.accounts.signOut") {
                         service.logout()
                     }
-                    .buttonStyle(PremiumButtonStyle(isDestructive: true))
+                    .buttonStyle(SettingsAdaptiveGlassButtonStyle(prominent: false, isDestructive: true))
                 } else {
                     Button("settings.accounts.connect") {
                         authServiceItem = SettingsView.AuthServiceItem(service: service)
@@ -664,19 +728,53 @@ struct AccountsSettingsView: View {
 }
 
 private struct SettingsAmbientBackdrop: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var backdropGradient: [Color] {
+        if colorScheme == .dark {
+            return [
+                Color(red: 0.05, green: 0.09, blue: 0.16),
+                Color(red: 0.07, green: 0.12, blue: 0.21),
+                Color(red: 0.04, green: 0.07, blue: 0.15),
+            ]
+        }
+        return [
+            Color(red: 0.91, green: 0.95, blue: 1.0),
+            Color(red: 0.86, green: 0.91, blue: 0.98),
+            Color(red: 0.95, green: 0.97, blue: 1.0),
+        ]
+    }
+
     var body: some View {
         ZStack {
+            LinearGradient(
+                colors: backdropGradient,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
             Circle()
-                .fill(Color.cyan.opacity(0.16))
+                .fill(Color.cyan.opacity(colorScheme == .dark ? 0.16 : 0.1))
                 .frame(width: 680, height: 680)
                 .blur(radius: 120)
                 .offset(x: -440, y: -250)
 
             Circle()
-                .fill(Color.blue.opacity(0.14))
+                .fill(Color.blue.opacity(colorScheme == .dark ? 0.14 : 0.08))
                 .frame(width: 560, height: 560)
                 .blur(radius: 100)
                 .offset(x: 540, y: -220)
+
+            Circle()
+                .fill(
+                    colorScheme == .dark
+                        ? Color.indigo.opacity(0.24)
+                        : Color.white.opacity(0.7)
+                )
+                .frame(width: 640, height: 640)
+                .blur(radius: 140)
+                .offset(x: 560, y: -250)
         }
         .ignoresSafeArea()
     }
@@ -688,6 +786,14 @@ private struct SettingsHeroPanel: View {
     let detail: String
     let symbol: String
     let tint: Color
+    @Environment(\.colorScheme) private var colorScheme
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
+    private var eyebrowColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.76) : theme.tertiaryText
+    }
+    private var detailColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.86) : theme.secondaryText
+    }
 
     var body: some View {
         HStack(spacing: 18) {
@@ -697,7 +803,7 @@ private struct SettingsHeroPanel: View {
                 .overlay {
                     Image(systemName: symbol)
                         .font(.system(size: 30, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(theme.primaryText)
                 }
                 .modifier(
                     SettingsGlassPanel(
@@ -711,13 +817,13 @@ private struct SettingsHeroPanel: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(eyebrow.uppercased())
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(eyebrowColor)
                 Text(title)
                     .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.primaryText)
                 Text(detail)
                     .font(.system(size: 16, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.66))
+                    .foregroundStyle(detailColor)
                     .lineLimit(2)
             }
 
@@ -739,17 +845,19 @@ private struct SettingsHeroPanel: View {
 private struct SettingsValueStack: View {
     let primary: String
     let secondary: String
+    @Environment(\.colorScheme) private var colorScheme
+    private var palette: SettingsButtonPalette { SettingsButtonPalette(colorScheme: colorScheme) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(primary)
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.96))
+                .foregroundStyle(palette.primary)
                 .lineLimit(2)
 
             Text(secondary)
                 .font(.system(size: 15, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.58))
+                .foregroundStyle(palette.secondary)
                 .lineLimit(2)
         }
     }
@@ -758,6 +866,8 @@ private struct SettingsValueStack: View {
 private struct SettingsStatusRow: View {
     let title: String
     let isActive: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    private var palette: SettingsButtonPalette { SettingsButtonPalette(colorScheme: colorScheme) }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -767,29 +877,33 @@ private struct SettingsStatusRow: View {
 
             Text(title)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.88))
+                .foregroundStyle(palette.primary)
 
             Spacer()
 
             Text(L10n.string(isActive ? "settings.status.active" : "settings.status.offline"))
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(palette.secondary)
         }
     }
 }
 
 private struct SettingsGlassPanel: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let cornerRadius: CGFloat
     var tint: Color = .clear
     var glassTint: Color = .white
     var isInteractive: Bool = false
     var isFocused: Bool = false
 
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
+    private var usesButtonChrome: Bool { isInteractive }
+
     func body(content: Content) -> some View {
         content
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                    .fill(panelBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -797,19 +911,22 @@ private struct SettingsGlassPanel: ViewModifier {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(borderColor, lineWidth: isFocused ? 1.8 : 1)
+                    .stroke(
+                        borderColor,
+                        lineWidth: usesButtonChrome && isFocused ? 2.2 : (isFocused ? 1.6 : 1)
+                    )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(tint)
+                    .fill(usesButtonChrome ? tint.opacity(isFocused ? 0.35 : 0.2) : tint)
             )
             .overlay(alignment: .top) {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(isFocused ? 0.28 : 0.18),
-                                Color.white.opacity(0.06),
+                                topHighlightStart,
+                                topHighlightMid,
                                 .clear,
                             ],
                             startPoint: .topLeading,
@@ -823,107 +940,282 @@ private struct SettingsGlassPanel: ViewModifier {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(isFocused ? 0.08 : 0.05),
+                                topGlowLeading,
                                 .clear,
-                                glassTint.opacity(isFocused ? 0.06 : 0.03),
+                                topGlowTrailing,
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
             }
+            .overlay {
+                if usesButtonChrome && isFocused {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(colorScheme == .dark ? 0.95 : 0.72),
+                                    liquidGlassTint.opacity(colorScheme == .dark ? 0.9 : 0.58),
+                                    Color.white.opacity(colorScheme == .dark ? 0.56 : 0.32),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 2.4
+                        )
+                }
+            }
+            .overlay {
+                if usesButtonChrome && isFocused {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(liquidGlassTint.opacity(colorScheme == .dark ? 0.52 : 0.28), lineWidth: 5.5)
+                        .blur(radius: 8)
+                        .padding(-3)
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if usesButtonChrome && isFocused {
+                    Circle()
+                        .fill(Color.white.opacity(colorScheme == .dark ? 0.26 : 0.18))
+                        .frame(width: cornerRadius * 1.2, height: cornerRadius * 1.2)
+                        .blur(radius: 12)
+                        .offset(x: 18, y: 14)
+                }
+            }
             .settingsLiquidGlass(
                 cornerRadius: cornerRadius,
-                tint: glassTint,
-                interactive: isInteractive
+                tint: liquidGlassTint,
+                interactive: usesButtonChrome
             )
-            .scaleEffect(isFocused ? 1.012 : 1)
-            .shadow(color: shadowColor, radius: isFocused ? 32 : 28, y: isFocused ? 14 : 12)
+            .brightness(colorScheme == .dark && usesButtonChrome && isFocused ? 0.03 : 0)
+            .saturation(colorScheme == .dark && usesButtonChrome && isFocused ? 1.06 : 1)
+            .scaleEffect(isFocused ? (usesButtonChrome ? 1.06 : 1.01) : 1)
+            .offset(y: usesButtonChrome && isFocused ? -2 : 0)
+            .zIndex(usesButtonChrome && isFocused ? 15 : 0)
+            .shadow(
+                color: shadowColor,
+                radius: isFocused ? (usesButtonChrome ? 38 : 28) : (usesButtonChrome ? 24 : 16),
+                y: isFocused ? (usesButtonChrome ? 14 : 9) : (usesButtonChrome ? 10 : 5)
+            )
             .animation(Motion.focus, value: isFocused)
     }
 
     private var baseFillColor: Color {
-        if isFocused {
-            return Color(red: 0.12, green: 0.17, blue: 0.26).opacity(0.88)
+        if colorScheme == .dark {
+            if usesButtonChrome {
+                return isFocused
+                    ? Color(red: 0.17, green: 0.28, blue: 0.45).opacity(0.7)
+                    : Color(red: 0.11, green: 0.20, blue: 0.34).opacity(0.52)
+            }
+            return isFocused
+                ? Color(red: 0.14, green: 0.25, blue: 0.41).opacity(0.62)
+                : Color(red: 0.1, green: 0.18, blue: 0.31).opacity(0.48)
         }
-        return Color.white.opacity(0.06)
+
+        if usesButtonChrome {
+            return isFocused
+                ? theme.focusFill.opacity(colorScheme == .dark ? 0.96 : 0.78)
+                : theme.panelFill.opacity(colorScheme == .dark ? 1.1 : 0.92)
+        }
+        return isFocused ? theme.focusFill : theme.panelFill
     }
 
     private var borderColor: Color {
-        if isFocused {
-            return Color.cyan.opacity(0.55)
+        if colorScheme == .dark {
+            if usesButtonChrome {
+                return isFocused
+                    ? Color(red: 0.6, green: 0.84, blue: 1.0).opacity(0.9)
+                    : Color(red: 0.39, green: 0.67, blue: 0.96).opacity(0.46)
+            }
+            return isFocused
+                ? Color(red: 0.52, green: 0.77, blue: 1.0).opacity(0.74)
+                : Color(red: 0.34, green: 0.61, blue: 0.92).opacity(0.38)
         }
-        return Color.white.opacity(0.12)
+
+        if usesButtonChrome {
+            return isFocused
+                ? theme.focusStroke.opacity(colorScheme == .dark ? 0.82 : 0.7)
+                : theme.panelStroke.opacity(colorScheme == .dark ? 1.2 : 1.05)
+        }
+        return isFocused ? theme.focusStroke : theme.panelStroke
     }
 
     private var shadowColor: Color {
-        if isFocused {
-            return Color.cyan.opacity(0.12)
+        if colorScheme == .dark {
+            if usesButtonChrome {
+                return isFocused
+                    ? Color(red: 0.06, green: 0.35, blue: 0.78).opacity(0.4)
+                    : Color.black.opacity(0.3)
+            }
+            return isFocused
+                ? Color(red: 0.05, green: 0.27, blue: 0.63).opacity(0.24)
+                : Color.black.opacity(0.26)
         }
-        return Color.black.opacity(0.22)
+
+        if usesButtonChrome {
+            return isFocused ? theme.focusShadow.opacity(0.9) : theme.panelShadow.opacity(1.2)
+        }
+        return isFocused ? theme.focusShadow : theme.panelShadow
+    }
+
+    private var panelBackground: AnyShapeStyle {
+        if colorScheme == .dark {
+            return AnyShapeStyle(.ultraThinMaterial)
+        }
+        return AnyShapeStyle(theme.panelMaterial)
+    }
+
+    private var liquidGlassTint: Color {
+        if colorScheme == .dark {
+            return usesButtonChrome
+                ? Color(red: 0.36, green: 0.64, blue: 0.98)
+                : Color(red: 0.31, green: 0.59, blue: 0.94)
+        }
+        return glassTint
+    }
+
+    private var topHighlightStart: Color {
+        if colorScheme == .dark {
+            return Color.white.opacity(usesButtonChrome ? (isFocused ? 0.28 : 0.18) : (isFocused ? 0.24 : 0.16))
+        }
+        return theme.primaryText.opacity(
+            usesButtonChrome ? (isFocused ? 0.14 : 0.1) : (isFocused ? 0.22 : 0.14)
+        )
+    }
+
+    private var topHighlightMid: Color {
+        if colorScheme == .dark {
+            return Color.white.opacity(usesButtonChrome ? 0.08 : 0.1)
+        }
+        return theme.primaryText.opacity(usesButtonChrome ? 0.03 : 0.04)
+    }
+
+    private var topGlowLeading: Color {
+        if colorScheme == .dark {
+            return Color.white.opacity(usesButtonChrome ? (isFocused ? 0.11 : 0.07) : (isFocused ? 0.1 : 0.06))
+        }
+        return theme.primaryText.opacity(
+            usesButtonChrome ? (isFocused ? 0.04 : 0.025) : (isFocused ? 0.06 : 0.04)
+        )
+    }
+
+    private var topGlowTrailing: Color {
+        if colorScheme == .dark {
+            return liquidGlassTint.opacity(usesButtonChrome ? (isFocused ? 0.14 : 0.08) : (isFocused ? 0.13 : 0.08))
+        }
+        return glassTint.opacity(
+            usesButtonChrome ? (isFocused ? 0.045 : 0.02) : (isFocused ? 0.06 : 0.03)
+        )
     }
 }
 
 private struct SettingsAdaptiveGlassButtonStyle: PrimitiveButtonStyle {
     let prominent: Bool
+    var isDestructive: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
-        SettingsAdaptiveGlassButtonLabel(
-            configuration: configuration,
-            prominent: prominent
-        )
+        Button(role: isDestructive ? .destructive : nil, action: configuration.trigger) {
+            configuration.label
+        }
+        .buttonStyle(SettingsFallbackGlassButtonStyle(prominent: prominent, isDestructive: isDestructive))
     }
 }
 
-private struct SettingsAdaptiveGlassButtonLabel: View {
-    let configuration: PrimitiveButtonStyleConfiguration
+private struct SettingsFallbackGlassButtonStyle: ButtonStyle {
     let prominent: Bool
+    let isDestructive: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        SettingsFallbackGlassButton(configuration: configuration, prominent: prominent, isDestructive: isDestructive)
+    }
+}
+
+private struct SettingsFallbackGlassButton: View {
+    let configuration: ButtonStyle.Configuration
+    let prominent: Bool
+    let isDestructive: Bool
+
+    @Environment(\.isFocused) private var isFocused
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: SettingsButtonPalette { SettingsButtonPalette(colorScheme: colorScheme) }
 
     var body: some View {
-        if #available(tvOS 26.0, iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *) {
-            if prominent {
-                Button(role: nil, action: configuration.trigger) {
-                    configuration.label
-                }
-                .buttonStyle(GlassProminentButtonStyle())
-            } else {
-                Button(role: nil, action: configuration.trigger) {
-                    configuration.label
-                }
-                .buttonStyle(GlassButtonStyle())
+        configuration.label
+            .font(.system(size: 18, weight: .bold, design: .rounded))
+            .foregroundStyle(foregroundColor)
+            .padding(.vertical, prominent ? 16 : 14)
+            .padding(.horizontal, prominent ? 30 : 26)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(backgroundColor)
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(borderColor, lineWidth: isFocused ? 2.2 : 1)
+            )
+            .overlay(alignment: .top) {
+                Capsule(style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(isFocused ? 0.72 : 0.55),
+                                Color.white.opacity(0.16),
+                                .clear,
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             }
-        } else {
-            Button(role: nil, action: configuration.trigger) {
-                configuration.label
-            }
-            .buttonStyle(PremiumButtonStyle())
+            .shadow(color: Color.black.opacity(isFocused ? 0.24 : 0.18), radius: isFocused ? 28 : 22, y: isFocused ? 10 : 8)
+            .scaleEffect(isFocused ? 1.02 : 1)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(Motion.focus, value: isFocused)
+            .animation(Motion.quick, value: configuration.isPressed)
+    }
+
+    private var backgroundColor: Color {
+        if isDestructive {
+            return colorScheme == .dark ? Color.white.opacity(0.18) : Color.white.opacity(0.72)
         }
+        if prominent {
+            return colorScheme == .dark ? Color.white.opacity(0.22) : Color.white.opacity(0.78)
+        }
+        return colorScheme == .dark ? Color.white.opacity(0.14) : Color.white.opacity(0.62)
+    }
+
+    private var foregroundColor: Color {
+        if isDestructive {
+            return Color.red.opacity(0.9)
+        }
+        return palette.primary
+    }
+
+    private var borderColor: Color {
+        if isFocused {
+            return colorScheme == .dark ? Color.white.opacity(0.8) : Color.black.opacity(0.18)
+        }
+        return colorScheme == .dark ? Color.white.opacity(0.32) : Color.black.opacity(0.08)
     }
 }
 
 private extension View {
     @ViewBuilder
-    func settingsLiquidGlass(cornerRadius: CGFloat, tint: Color = .white, interactive: Bool = false)
-        -> some View
-    {
+    func settingsLiquidGlass(
+        cornerRadius: CGFloat,
+        tint: Color = .white,
+        interactive: Bool = false
+    ) -> some View {
         if #available(tvOS 26.0, iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *) {
             self.glassEffect(
                 interactive
-                    ? .regular.tint(tint.opacity(0.18)).interactive()
-                    : .regular.tint(tint.opacity(0.1)),
+                    ? .regular.tint(tint.opacity(0.24)).interactive()
+                    : .regular.tint(tint.opacity(0.12)),
                 in: .rect(cornerRadius: cornerRadius)
             )
-        } else {
-            self
-        }
-    }
-
-    @ViewBuilder
-    func dashBDisableSystemFocusEffect() -> some View {
-        if #available(tvOS 17.0, iOS 17.0, macOS 14.0, visionOS 1.0, watchOS 10.0, *) {
-            self
-                .focusEffectDisabled()
-                .hoverEffectDisabled(true)
         } else {
             self
         }

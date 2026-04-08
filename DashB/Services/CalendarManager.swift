@@ -106,7 +106,7 @@ class CalendarManager: ObservableObject {
                         // Applica colori personalizzati
                         let enriched = events.map { event -> DashboardEvent in
                             var e = event
-                            if let config = selectedGoogleCalendars.first(where: {
+                            if let config = self.selectedGoogleCalendars.first(where: {
                                 $0.id == event.calendarID
                             }),
                                 let hex = config.colorHex
@@ -143,7 +143,7 @@ class CalendarManager: ObservableObject {
                         // Applica colori personalizzati
                         let enriched = events.map { event -> DashboardEvent in
                             var e = event
-                            if let config = selectedOutlookCalendars.first(where: {
+                            if let config = self.selectedOutlookCalendars.first(where: {
                                 $0.id == event.calendarID
                             }),
                                 let hex = config.colorHex
