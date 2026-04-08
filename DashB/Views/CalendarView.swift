@@ -47,6 +47,7 @@ struct CalendarView: View {
                     .foregroundColor(.red)
                 Text("calendar.title")
                     .font(.headline)
+                    .foregroundStyle(theme.primaryText)
                 Spacer()
             }
             .padding(.bottom, 5)
@@ -60,7 +61,7 @@ struct CalendarView: View {
                             // Header Data
                             Text(dateHeader(for: date).uppercased())
                                 .font(.callout.weight(.semibold))
-                                .foregroundColor(isDateToday(date) ? .red : .gray)
+                                .foregroundColor(isDateToday(date) ? .red : theme.tertiaryText)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
                                 .padding(.leading, 2)
@@ -247,6 +248,11 @@ private struct CalendarGlassPanel: ViewModifier {
                         )
                     )
             }
+            .dashBLiquidGlass(
+                cornerRadius: cornerRadius,
+                tint: theme.glassTint,
+                staticTintOpacity: colorScheme == .dark ? 0.12 : 0.08
+            )
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .shadow(color: theme.panelShadow, radius: 24, y: 12)
     }

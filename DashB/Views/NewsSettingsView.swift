@@ -10,12 +10,14 @@ import SwiftUI
 struct NewsSettingsView: View {
     @EnvironmentObject var rssModel: RSSModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var newFeedUrl: String = ""
     @State private var newFeedSource: String = ""
     @State private var validationError: String?
     @State private var showContent = false
     @FocusState private var focusedElement: NewsSettingsFocusElement?
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
 
     private let defaultFeeds: [FeedConfig] = [
         FeedConfig(
@@ -77,11 +79,11 @@ struct NewsSettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("newsSettings.title")
                     .font(.system(size: 42, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.primaryText)
 
                 Text("newsSettings.subtitle")
                     .font(.system(size: 19, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.68))
+                    .foregroundStyle(theme.secondaryText)
             }
 
             Spacer()
@@ -99,7 +101,7 @@ struct NewsSettingsView: View {
         VStack(alignment: .leading, spacing: 18) {
             Text("newsSettings.activeFeeds")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.primaryText)
 
             ScrollView {
                 VStack(spacing: 18) {
@@ -108,11 +110,11 @@ struct NewsSettingsView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(feed.source)
                                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(theme.primaryText)
 
                                 Text(feed.url)
                                     .font(.system(size: 13, weight: .medium, design: .monospaced))
-                                    .foregroundStyle(.white.opacity(0.68))
+                                    .foregroundStyle(theme.secondaryText)
                                     .lineLimit(2)
                             }
 
@@ -143,7 +145,7 @@ struct NewsSettingsView: View {
         VStack(alignment: .leading, spacing: 26) {
             Text("newsSettings.addSource")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.primaryText)
 
             feedField(
                 title: L10n.string("newsSettings.field.sourceName"),
@@ -163,7 +165,7 @@ struct NewsSettingsView: View {
                     "newsSettings.hint.remotePaste"
                 )
                 .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.62))
+                .foregroundStyle(theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
             #endif
 
@@ -204,7 +206,7 @@ struct NewsSettingsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.64))
+                .foregroundStyle(theme.secondaryText)
 
             TextField(prompt, text: text)
                 .textFieldStyle(.plain)
@@ -279,41 +281,55 @@ struct TrashButtonStyle: ButtonStyle {
 }
 
 private struct SubmenuAmbientBackdrop: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color.cyan.opacity(0.14))
+                .fill(Color.cyan.opacity(colorScheme == .dark ? 0.15 : 0.12))
                 .frame(width: 620, height: 620)
                 .blur(radius: 120)
                 .offset(x: -420, y: -220)
 
             Circle()
-                .fill(Color.indigo.opacity(0.14))
+                .fill(Color.indigo.opacity(colorScheme == .dark ? 0.16 : 0.1))
                 .frame(width: 520, height: 520)
                 .blur(radius: 100)
                 .offset(x: 420, y: -180)
+
+            Circle()
+                .fill(
+                    colorScheme == .dark
+                        ? Color.blue.opacity(0.18)
+                        : Color.white.opacity(0.1)
+                )
+                .frame(width: 540, height: 540)
+                .blur(radius: 110)
+                .offset(x: 430, y: 200)
         }
         .ignoresSafeArea()
     }
 }
 
 private struct SubmenuGlassPanel: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let cornerRadius: CGFloat
     var tint: Color = .clear
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
 
     func body(content: Content) -> some View {
         content
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                    .fill(theme.panelMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Color.white.opacity(0.04))
+                    .fill(theme.panelFill)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    .stroke(theme.panelStroke, lineWidth: 1)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -323,14 +339,18 @@ private struct SubmenuGlassPanel: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(
                         LinearGradient(
-                            colors: [Color.white.opacity(0.05), .clear, tint.opacity(0.5)],
+                            colors: [theme.primaryText.opacity(0.08), .clear, tint.opacity(0.5)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
             }
-            .submenuLiquidGlass(cornerRadius: cornerRadius)
-            .shadow(color: .black.opacity(0.22), radius: 26, y: 12)
+            .dashBLiquidGlass(
+                cornerRadius: cornerRadius,
+                tint: theme.glassTint,
+                staticTintOpacity: colorScheme == .dark ? 0.12 : 0.08
+            )
+            .shadow(color: theme.panelShadow, radius: 26, y: 12)
     }
 }
 
@@ -350,11 +370,13 @@ private struct SubmenuAdaptiveGlassButtonStyle: PrimitiveButtonStyle {
 private struct SubmenuButtonChrome: ViewModifier {
     let prominent: Bool
     @Environment(\.isFocused) private var isFocused
+    @Environment(\.colorScheme) private var colorScheme
+    private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
 
     func body(content: Content) -> some View {
         content
             .font(.system(size: 20, weight: .bold, design: .rounded))
-            .foregroundStyle(prominent ? Color.black : Color.white)
+            .foregroundStyle(prominent ? Color.black.opacity(0.88) : theme.primaryText)
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
             .background(
@@ -362,12 +384,15 @@ private struct SubmenuButtonChrome: ViewModifier {
                     .fill(
                         prominent
                             ? Color.white.opacity(0.9)
-                            : Color(red: 0.12, green: 0.17, blue: 0.27).opacity(0.86)
+                            : theme.panelFill.opacity(colorScheme == .dark ? 1.25 : 0.96)
                     )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(prominent ? Color.clear : Color.cyan.opacity(0.2), lineWidth: 1)
+                    .stroke(
+                        prominent ? Color.clear : theme.focusStroke.opacity(isFocused ? 0.8 : 0.4),
+                        lineWidth: isFocused ? 1.6 : 1
+                    )
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -379,30 +404,19 @@ private struct SubmenuButtonChrome: ViewModifier {
                         )
                     )
             }
-            .submenuLiquidGlass(cornerRadius: 20, tint: prominent ? .white : .cyan, interactive: true)
-            .scaleEffect(isFocused ? 1.012 : 1)
-            .shadow(color: Color.cyan.opacity(isFocused ? 0.12 : 0.06), radius: 18, y: 8)
+            .dashBLiquidGlass(
+                cornerRadius: 20,
+                tint: prominent ? .white : theme.glassTint,
+                interactive: true,
+                interactiveTintOpacity: colorScheme == .dark ? 0.24 : 0.16
+            )
+            .scaleEffect(isFocused ? 1.05 : 1)
+            .shadow(color: theme.focusShadow.opacity(isFocused ? 1 : 0.5), radius: isFocused ? 24 : 16, y: isFocused ? 10 : 6)
             .animation(Motion.focus, value: isFocused)
     }
 }
 
 private extension View {
-    @ViewBuilder
-    func submenuLiquidGlass(cornerRadius: CGFloat, tint: Color = .white, interactive: Bool = false)
-        -> some View
-    {
-        if #available(tvOS 26.0, iOS 26.0, macOS 26.0, visionOS 26.0, watchOS 26.0, *) {
-            self.glassEffect(
-                interactive
-                    ? .regular.tint(tint.opacity(0.15)).interactive()
-                    : .regular.tint(tint.opacity(0.08)),
-                in: .rect(cornerRadius: cornerRadius)
-            )
-        } else {
-            self
-        }
-    }
-
     @ViewBuilder
     func dashBDisableSystemFocusEffect() -> some View {
         if #available(tvOS 17.0, iOS 17.0, macOS 14.0, visionOS 1.0, watchOS 10.0, *) {

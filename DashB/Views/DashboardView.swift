@@ -160,7 +160,7 @@ struct DashboardView: View {
             }
             .focused($isSettingsFocused)
             .buttonStyle(DashboardAdaptiveGlassButtonStyle(prominent: false))
-            .scaleEffect(isSettingsFocused ? 1.02 : 1)
+            .scaleEffect(isSettingsFocused ? 1.05 : 1)
             .animation(Motion.focus, value: isSettingsFocused)
         }
         .padding(.bottom, 5)
@@ -174,22 +174,28 @@ struct DashboardView: View {
 }
 
 private struct DashboardAmbientBackdrop: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color.cyan.opacity(0.14))
+                .fill(Color.cyan.opacity(colorScheme == .dark ? 0.15 : 0.12))
                 .frame(width: 720, height: 720)
                 .blur(radius: 140)
                 .offset(x: -430, y: -260)
 
             Circle()
-                .fill(Color.blue.opacity(0.12))
+                .fill(Color.blue.opacity(colorScheme == .dark ? 0.14 : 0.1))
                 .frame(width: 620, height: 620)
                 .blur(radius: 120)
                 .offset(x: 520, y: -240)
 
             Circle()
-                .fill(Color.white.opacity(0.05))
+                .fill(
+                    colorScheme == .dark
+                        ? Color.indigo.opacity(0.16)
+                        : Color.white.opacity(0.05)
+                )
                 .frame(width: 520, height: 520)
                 .blur(radius: 90)
                 .offset(x: 460, y: 280)
@@ -252,6 +258,11 @@ private struct DashboardGlassPanel: ViewModifier {
                         )
                     )
             }
+            .dashBLiquidGlass(
+                cornerRadius: cornerRadius,
+                tint: theme.glassTint,
+                staticTintOpacity: colorScheme == .dark ? 0.12 : 0.08
+            )
             .shadow(color: theme.panelShadow, radius: 28, y: 12)
     }
 }

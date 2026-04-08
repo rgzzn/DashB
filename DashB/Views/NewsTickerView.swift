@@ -37,6 +37,7 @@ struct NewsTickerView: View {
     private let qrGenerator = QRCodeGenerator()
     private var theme: DashboardTheme { DashboardTheme(scheme: colorScheme) }
     private var overlayBaseColor: Color { colorScheme == .dark ? .black : .white }
+    private var contentOverlayOpacity: Double { colorScheme == .dark ? 0.82 : 0.72 }
 
     private var safeNewsCount: Int {
         model.newsItems.count
@@ -76,7 +77,7 @@ struct NewsTickerView: View {
                         }
 
                         LinearGradient(
-                            gradient: Gradient(colors: [overlayBaseColor.opacity(0.88), .transparent]),
+                            gradient: Gradient(colors: [overlayBaseColor.opacity(contentOverlayOpacity), .transparent]),
                             startPoint: .bottom, endPoint: .top
                         )
 
@@ -235,7 +236,7 @@ struct NewsTickerView: View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-        .overlay(Color.black.opacity(0.25))
+        .overlay(Color.black.opacity(0.2))
     }
 
     func stripHTML(from string: String) -> String {
@@ -290,6 +291,11 @@ private struct NewsTickerGlassPanel: ViewModifier {
                         )
                     )
             }
+            .dashBLiquidGlass(
+                cornerRadius: cornerRadius,
+                tint: theme.glassTint,
+                staticTintOpacity: colorScheme == .dark ? 0.12 : 0.08
+            )
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .shadow(color: theme.panelShadow, radius: 24, y: 12)
     }

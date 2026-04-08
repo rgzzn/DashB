@@ -34,13 +34,18 @@ struct WeatherView: View {
                                 colors: [
                                     theme.primaryText.opacity(0.05),
                                     .clear,
-                                    theme.primaryText.opacity(0.04),
+                                    theme.glassTint.opacity(0.05),
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
                 }
+                .dashBLiquidGlass(
+                    cornerRadius: 30,
+                    tint: theme.glassTint,
+                    staticTintOpacity: colorScheme == .dark ? 0.12 : 0.08
+                )
 
             weatherContent
                 .padding(24)
@@ -50,7 +55,7 @@ struct WeatherView: View {
                 .animation(Motion.enter, value: showContent)
         }
         .clipShape(panelShape)
-        .shadow(color: theme.panelShadow, radius: 24, y: 12)
+        .shadow(color: theme.panelShadow, radius: 26, y: 12)
         .onAppear {
             guard !showContent else { return }
             withAnimation(Motion.enter) {
