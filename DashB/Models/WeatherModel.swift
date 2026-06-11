@@ -9,18 +9,19 @@ import Combine
 import CoreLocation
 import MapKit
 import Foundation
+import os
 import SwiftUI
 import WeatherKit
 
-struct Forecast: Identifiable {
-    let id = UUID()
+struct Forecast: Identifiable, Equatable {
+    var id: String { "\(time)-\(icon)-\(temp)" }
     let time: String
     let icon: String  // Simbolo SF
     let temp: String
 }
 
-struct DailyForecast: Identifiable {
-    let id = UUID()
+struct DailyForecast: Identifiable, Equatable {
+    var id: String { "\(day)-\(icon)-\(tempHigh)-\(tempLow)" }
     let day: String
     let icon: String
     let tempHigh: String
@@ -29,6 +30,10 @@ struct DailyForecast: Identifiable {
 
 @MainActor
 class WeatherModel: NSObject, ObservableObject {
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "DashB", category: "Weather")
+    private static let refreshInterval: TimeInterval = 15 * 60
+    private static let refreshOffset: TimeInterval = 60
+
     @Published var selectedCity: String {
         didSet {
             UserDefaults.standard.set(selectedCity, forKey: Self.cityDefaultsKey)
@@ -75,6 +80,8 @@ class WeatherModel: NSObject, ObservableObject {
     @Published var weatherAdvice: String = L10n.string("weather.advice.default")
 
     private var timer: Timer?
+    private var initialRefreshTask: Task<Void, Never>?
+    private var isRefreshing = false
     private let weatherService = WeatherService.shared
     private let locationManager = CLLocationManager()
 
@@ -96,18 +103,36 @@ class WeatherModel: NSObject, ObservableObject {
         requestLocationIfNeeded()
         // Determina la logica del nome città iniziale durante il primo aggiornamento
         startTimer()
-        Task { await self.refresh() }
     }
 
     func startTimer() {
         timer?.invalidate()
-        // Aggiorna ogni 15 minuti
-        timer = Timer.scheduledTimer(withTimeInterval: 900, repeats: true) { [weak self] _ in
-            Task { await self?.refresh() }
+        initialRefreshTask?.cancel()
+
+        // Offset di circa 60 secondi rispetto al refresh immediato dei calendari.
+        initialRefreshTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(Self.refreshOffset * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            await self?.refresh()
+            self?.timer = Timer.scheduledTimer(withTimeInterval: Self.refreshInterval, repeats: true) { [weak self] _ in
+                Task { await self?.refresh() }
+            }
         }
     }
 
     func refresh() async {
+        guard !isRefreshing else {
+            Self.logger.debug("Weather refresh skipped because a refresh is already running")
+            return
+        }
+        isRefreshing = true
+        let startedAt = Date()
+        defer {
+            isRefreshing = false
+            let duration = Date().timeIntervalSince(startedAt)
+            Self.logger.info("Weather refresh completed in \(duration, format: .fixed(precision: 2))s")
+        }
+
         // Caso 1: Città Manuale
         if useManualCity {
             let cityQuery = selectedCity.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -394,12 +419,14 @@ class WeatherModel: NSObject, ObservableObject {
                 }
 
                 guard isLatestWeatherRequest(requestID) else { return }
-                self.currentTemp = currentTemp
-                self.conditionIcon = conditionIcon
-                self.conditionDescription = conditionDescription
-                self.weatherAdvice = weatherAdvice
-                self.hourlyForecast = items
-                self.dailyForecast = dailyItems
+                applyWeatherSnapshot(
+                    currentTemp: currentTemp,
+                    conditionIcon: conditionIcon,
+                    conditionDescription: conditionDescription,
+                    weatherAdvice: weatherAdvice,
+                    hourlyForecast: items,
+                    dailyForecast: dailyItems
+                )
             } else {
                 let weather = try await weatherService.weather(for: cleanLocation)
 
@@ -444,16 +471,18 @@ class WeatherModel: NSObject, ObservableObject {
                 }
 
                 guard isLatestWeatherRequest(requestID) else { return }
-                self.currentTemp = currentTemp
-                self.conditionIcon = conditionIcon
-                self.conditionDescription = conditionDescription
-                self.weatherAdvice = weatherAdvice
-                self.hourlyForecast = items
-                self.dailyForecast = dailyItems
+                applyWeatherSnapshot(
+                    currentTemp: currentTemp,
+                    conditionIcon: conditionIcon,
+                    conditionDescription: conditionDescription,
+                    weatherAdvice: weatherAdvice,
+                    hourlyForecast: items,
+                    dailyForecast: dailyItems
+                )
             }
         } catch {
             guard isLatestWeatherRequest(requestID) else { return }
-            print("Weather fetch failed: \(error)")
+            Self.logger.error("WeatherKit fetch failed: \(error.localizedDescription, privacy: .public)")
             self.currentTemp = L10n.string("weather.error.short")
             self.conditionIcon = "exclamationmark.triangle.fill"
             self.conditionDescription = L10n.string("weather.error.title")
@@ -474,6 +503,22 @@ class WeatherModel: NSObject, ObservableObject {
                 }
             #endif
         }
+    }
+
+    private func applyWeatherSnapshot(
+        currentTemp: String,
+        conditionIcon: String,
+        conditionDescription: String,
+        weatherAdvice: String,
+        hourlyForecast: [Forecast],
+        dailyForecast: [DailyForecast]
+    ) {
+        if self.currentTemp != currentTemp { self.currentTemp = currentTemp }
+        if self.conditionIcon != conditionIcon { self.conditionIcon = conditionIcon }
+        if self.conditionDescription != conditionDescription { self.conditionDescription = conditionDescription }
+        if self.weatherAdvice != weatherAdvice { self.weatherAdvice = weatherAdvice }
+        if self.hourlyForecast != hourlyForecast { self.hourlyForecast = hourlyForecast }
+        if self.dailyForecast != dailyForecast { self.dailyForecast = dailyForecast }
     }
 
     private func userFacingWeatherErrorMessage(for error: Error) -> String {
@@ -774,7 +819,8 @@ class WeatherModel: NSObject, ObservableObject {
         ]
         guard let url = comps.url else { return }
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            let request = URLRequest(url: url, timeoutInterval: 15)
+            let (data, _) = try await URLSession.shared.data(for: request)
             let decoded = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
             if let requestID, !isLatestWeatherRequest(requestID) { return }
 
@@ -799,12 +845,19 @@ class WeatherModel: NSObject, ObservableObject {
             outputDayFormatter.dateFormat = "EE"
             outputDayFormatter.timeZone = sourceTimeZone
 
+            var nextCurrentTemp = self.currentTemp
+            var nextConditionIcon = self.conditionIcon
+            var nextConditionDescription = self.conditionDescription
+            var nextWeatherAdvice = self.weatherAdvice
+            var nextHourlyForecast = self.hourlyForecast
+            var nextDailyForecast = self.dailyForecast
+
             if let current = decoded.current_weather {
-                self.currentTemp = String(format: "%.0f°", current.temperature)
-                self.conditionIcon = self.sfSymbolFromWeatherCode(
+                nextCurrentTemp = String(format: "%.0f°", current.temperature)
+                nextConditionIcon = self.sfSymbolFromWeatherCode(
                     current.weathercode, isDay: current.is_day)
-                self.conditionDescription = self.descriptionFromWeatherCode(current.weathercode)
-                self.weatherAdvice = self.adviceFromWeatherCode(current.weathercode)
+                nextConditionDescription = self.descriptionFromWeatherCode(current.weathercode)
+                nextWeatherAdvice = self.adviceFromWeatherCode(current.weathercode)
             }
 
             if let hourly = decoded.hourly {
@@ -845,7 +898,7 @@ class WeatherModel: NSObject, ObservableObject {
                             time: label, icon: self.sfSymbolFromWeatherCode(code, isDay: isDay),
                             temp: tempString))
                 }
-                self.hourlyForecast = items
+                nextHourlyForecast = items
             }
 
             if let daily = decoded.daily {
@@ -870,12 +923,19 @@ class WeatherModel: NSObject, ObservableObject {
                             tempHigh: String(format: "%.0f°", high),
                             tempLow: String(format: "%.0f°", low)))
                 }
-                self.dailyForecast = dailyItems
+                nextDailyForecast = dailyItems
             }
+
+            applyWeatherSnapshot(
+                currentTemp: nextCurrentTemp,
+                conditionIcon: nextConditionIcon,
+                conditionDescription: nextConditionDescription,
+                weatherAdvice: nextWeatherAdvice,
+                hourlyForecast: nextHourlyForecast,
+                dailyForecast: nextDailyForecast
+            )
         } catch {
-            #if DEBUG
-                print("Open-Meteo fallback failed: \(error)")
-            #endif
+            Self.logger.error("Open-Meteo fallback failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -896,7 +956,8 @@ class WeatherModel: NSObject, ObservableObject {
         guard let url = URL(string: urlString) else { return nil }
 
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            let request = URLRequest(url: url, timeoutInterval: 15)
+            let (data, _) = try await URLSession.shared.data(for: request)
             let decoded = try JSONDecoder().decode(OpenMeteoGeocodingResponse.self, from: data)
 
             if let result = decoded.results?.first {
@@ -911,7 +972,7 @@ class WeatherModel: NSObject, ObservableObject {
                 return (location, displayName)
             }
         } catch {
-            print("Open-Meteo Geocoding failed: \(error)")
+            Self.logger.error("Open-Meteo geocoding failed: \(error.localizedDescription, privacy: .public)")
         }
 
         return nil
@@ -922,6 +983,7 @@ class WeatherModel: NSObject, ObservableObject {
 
     deinit {
         timer?.invalidate()
+        initialRefreshTask?.cancel()
     }
 }
 
@@ -965,7 +1027,7 @@ extension WeatherModel: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor in
             #if DEBUG
-                print("Location error: \(error)")
+                Self.logger.error("Location error: \(error.localizedDescription, privacy: .public)")
             #endif
             self.locationRequestContinuations.forEach { $0.resume(returning: nil) }
             self.locationRequestContinuations.removeAll()

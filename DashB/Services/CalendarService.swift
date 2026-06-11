@@ -10,7 +10,17 @@ import Foundation
 import SwiftUI
 
 struct DashboardEvent: Identifiable {
-    let id = UUID()
+    var id: String {
+        [
+            calendarID,
+            title,
+            startDate.timeIntervalSince1970.description,
+            endDate.timeIntervalSince1970.description,
+            location ?? "",
+            isAllDay.description,
+        ].joined(separator: "|")
+    }
+
     let title: String
     let startDate: Date
     let endDate: Date

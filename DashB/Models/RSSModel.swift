@@ -7,8 +7,20 @@
 
 import Combine
 import Foundation
+import os
 
 actor OGImageService {
+    enum Source: Sendable {
+        case memoryCache
+        case network
+        case none
+    }
+
+    struct Result: Sendable {
+        let url: String?
+        let source: Source
+    }
+
     private let session: URLSession
     private let ogImageRegex = try? NSRegularExpression(
         pattern: "<meta property=\"og:image\" content=\"([^\"]+)\"", options: .caseInsensitive)
@@ -25,12 +37,12 @@ actor OGImageService {
         self.cache.countLimit = 120
     }
 
-    func ogImageURL(for articleLink: String) async -> String? {
+    func ogImageURL(for articleLink: String) async -> Result {
         if let cached = cache.object(forKey: articleLink as NSString) {
-            return cached as String
+            return Result(url: cached as String, source: .memoryCache)
         }
 
-        guard let articleURL = URL(string: articleLink) else { return nil }
+        guard let articleURL = URL(string: articleLink) else { return Result(url: nil, source: .none) }
 
         do {
             let (data, response) = try await session.data(from: articleURL)
@@ -39,12 +51,12 @@ actor OGImageService {
                 let html = String(data: data, encoding: .utf8),
                 let ogImage = extractOGImage(from: html)
             else {
-                return nil
+                return Result(url: nil, source: .none)
             }
             cache.setObject(ogImage as NSString, forKey: articleLink as NSString)
-            return ogImage
+            return Result(url: ogImage, source: .network)
         } catch {
-            return nil
+            return Result(url: nil, source: .none)
         }
     }
 
@@ -59,8 +71,8 @@ actor OGImageService {
     }
 }
 
-struct NewsItem: Identifiable, Equatable {
-    let id = UUID()
+struct NewsItem: Identifiable, Equatable, Sendable {
+    let id: String
     let title: String
     let description: String
     let pubDate: String
@@ -68,9 +80,34 @@ struct NewsItem: Identifiable, Equatable {
     let link: String
     let source: String
     var imageUrl: String? = nil
+
+    init(
+        title: String,
+        description: String,
+        pubDate: String,
+        rawDate: Date?,
+        link: String,
+        source: String,
+        imageUrl: String? = nil
+    ) {
+        self.id = NewsItem.stableID(title: title, link: link, source: source)
+        self.title = title
+        self.description = description
+        self.pubDate = pubDate
+        self.rawDate = rawDate
+        self.link = link
+        self.source = source
+        self.imageUrl = imageUrl
+    }
+
+    private static func stableID(title: String, link: String, source: String) -> String {
+        let trimmedLink = link.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedLink.isEmpty { return trimmedLink }
+        return "\(source)::\(title.trimmingCharacters(in: .whitespacesAndNewlines))"
+    }
 }
 
-struct FeedConfig: Codable, Equatable, Identifiable {
+struct FeedConfig: Codable, Equatable, Identifiable, Sendable {
     var id: String { url }
     let url: String
     let source: String
@@ -97,6 +134,10 @@ enum FeedURLValidator {
 
 @MainActor
 class RSSModel: ObservableObject {
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "DashB", category: "RSS")
+    private static let refreshInterval: TimeInterval = 15 * 60
+    private static let refreshOffset: TimeInterval = 120
+
     @Published var newsItems: [NewsItem] = []
     @Published var feeds: [FeedConfig] {
         didSet {
@@ -105,7 +146,9 @@ class RSSModel: ObservableObject {
     }
 
     private var timer: Timer?
+    private var initialRefreshTask: Task<Void, Never>?
     private var fetchTask: Task<Void, Never>?
+    private var isRefreshing = false
     private let ogImageService = OGImageService()
     private let feedsDefaultsKey = "RSSModel.savedFeeds"
     private let defaultFeeds: [FeedConfig] = [
@@ -129,16 +172,22 @@ class RSSModel: ObservableObject {
         } else {
             self.feeds = defaultFeeds
         }
-        fetchNews()
         startTimer()
     }
 
     func startTimer() {
         timer?.invalidate()
-        // Aggiorna il feed ogni 15 minuti
-        timer = Timer.scheduledTimer(withTimeInterval: 900, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.fetchNews()
+        initialRefreshTask?.cancel()
+
+        // Offset di circa 120 secondi rispetto al refresh immediato dei calendari.
+        initialRefreshTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(Self.refreshOffset * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.fetchNews()
+            self?.timer = Timer.scheduledTimer(withTimeInterval: Self.refreshInterval, repeats: true) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.fetchNews()
+                }
             }
         }
     }
@@ -151,11 +200,22 @@ class RSSModel: ObservableObject {
     }
 
     func fetchNews() {
+        guard !isRefreshing else {
+            Self.logger.debug("RSS refresh skipped because a refresh is already running")
+            return
+        }
+        isRefreshing = true
         fetchTask?.cancel()
         let feedsSnapshot = feeds
+        let startedAt = Date()
 
         fetchTask = Task { [weak self] in
             guard let self else { return }
+            defer {
+                Task { @MainActor [weak self] in
+                    self?.isRefreshing = false
+                }
+            }
             var allItems: [NewsItem] = []
 
             await withTaskGroup(of: [NewsItem].self) { group in
@@ -184,11 +244,13 @@ class RSSModel: ObservableObject {
             if self.newsItems != nextItems {
                 self.newsItems = nextItems  // Mantieni i primi 50 elementi
             }
-            await self.enrichNewsItemsWithImages()
+            let imageStats = await self.enrichNewsItemsWithImages()
+            let duration = Date().timeIntervalSince(startedAt)
+            Self.logger.info("RSS refresh completed in \(duration, format: .fixed(precision: 2))s, articles: \(nextItems.count), og images network: \(imageStats.network), cache: \(imageStats.cache)")
         }
     }
 
-    private func fetchSingleFeed(_ config: FeedConfig) async -> [NewsItem] {
+    nonisolated private func fetchSingleFeed(_ config: FeedConfig) async -> [NewsItem] {
         guard let url = FeedURLValidator.validatedHTTPSURL(from: config.url) else { return [] }
 
         let request = URLRequest(
@@ -208,37 +270,44 @@ class RSSModel: ObservableObject {
             let parser = RSSParser(source: config.source)
             return parser.parse(data: data)
         } catch {
-            print("Error fetching RSS feed \(config.source): \(error.localizedDescription)")
+            Self.logger.error("RSS feed \(config.source, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
             return []
         }
     }
 
-    private func enrichNewsItemsWithImages() async {
+    private func enrichNewsItemsWithImages() async -> (network: Int, cache: Int) {
         // Arricchisci solo i primi 12 elementi per risparmiare risorse
         let itemsToFetch = Array(newsItems.prefix(12))
         let batchSize = 3
 
-        guard !itemsToFetch.isEmpty else { return }
+        guard !itemsToFetch.isEmpty else { return (0, 0) }
+        var networkHits = 0
+        var cacheHits = 0
 
         for start in stride(from: 0, to: itemsToFetch.count, by: batchSize) {
-            if Task.isCancelled { return }
+            if Task.isCancelled { return (networkHits, cacheHits) }
             let end = min(start + batchSize, itemsToFetch.count)
             let batch = itemsToFetch[start..<end]
-            var updates: [UUID: String] = [:]
+            var updates: [String: String] = [:]
 
-            await withTaskGroup(of: (UUID, String?).self) { group in
+            await withTaskGroup(of: (String, OGImageService.Result).self) { group in
                 for item in batch {
                     guard item.imageUrl == nil else { continue }
                     let itemID = item.id
                     let link = item.link
                     group.addTask {
-                        let imageURL = await self.ogImageService.ogImageURL(for: link)
-                        return (itemID, imageURL)
+                        let result = await self.ogImageService.ogImageURL(for: link)
+                        return (itemID, result)
                     }
                 }
 
-                for await (itemID, ogImage) in group {
-                    guard let ogImage else { continue }
+                for await (itemID, result) in group {
+                    switch result.source {
+                    case .memoryCache: cacheHits += 1
+                    case .network: networkHits += 1
+                    case .none: break
+                    }
+                    guard let ogImage = result.url else { continue }
                     updates[itemID] = ogImage
                 }
             }
@@ -257,10 +326,13 @@ class RSSModel: ObservableObject {
                 newsItems = mergedItems
             }
         }
+
+        return (networkHits, cacheHits)
     }
 
     deinit {
         timer?.invalidate()
+        initialRefreshTask?.cancel()
         fetchTask?.cancel()
     }
 
