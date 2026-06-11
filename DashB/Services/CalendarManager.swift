@@ -7,9 +7,13 @@
 
 import Combine
 import Foundation
+import os
 import SwiftUI
 
+@MainActor
 class CalendarManager: ObservableObject {
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "DashB", category: "Calendar")
+
     @Published var upcomingEvents: [DashboardEvent] = []
     @Published var isRefreshing: Bool = false
 
@@ -46,7 +50,9 @@ class CalendarManager: ObservableObject {
             .removeDuplicates()
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                self?.fetchEvents()
+                Task { @MainActor in
+                    self?.fetchEvents()
+                }
             }
             .store(in: &cancellables)
 
@@ -54,7 +60,9 @@ class CalendarManager: ObservableObject {
             .removeDuplicates()
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                self?.fetchEvents()
+                Task { @MainActor in
+                    self?.fetchEvents()
+                }
             }
             .store(in: &cancellables)
 
@@ -63,7 +71,9 @@ class CalendarManager: ObservableObject {
         // Aggiorna periodicamente ogni 5 min
         refreshTimer?.invalidate()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            self?.fetchEvents()
+            Task { @MainActor in
+                self?.fetchEvents()
+            }
         }
     }
 
@@ -73,14 +83,19 @@ class CalendarManager: ObservableObject {
     }
 
     func fetchEvents() {
-        refreshTask?.cancel()
+        guard !isRefreshing else {
+            Self.logger.debug("Calendar refresh skipped because a refresh is already running")
+            return
+        }
+        isRefreshing = true
+        let startedAt = Date()
+
         refreshTask = Task { [weak self] in
             guard let self else { return }
-            await MainActor.run { self.isRefreshing = true }
             defer {
-                Task { @MainActor [weak self] in
-                    self?.isRefreshing = false
-                }
+                self.isRefreshing = false
+                let duration = Date().timeIntervalSince(startedAt)
+                Self.logger.info("Calendar refresh completed in \(duration, format: .fixed(precision: 2))s, events: \(self.upcomingEvents.count)")
             }
 
             var allEvents: [DashboardEvent] = []
@@ -91,11 +106,9 @@ class CalendarManager: ObservableObject {
                 if selectedGoogleCalendars.isEmpty {
                     do {
                         let available = try await googleService.fetchAvailableCalendars()
-                        await MainActor.run {
-                            self.selectedGoogleCalendars = available
-                        }
+                        self.selectedGoogleCalendars = available
                     } catch {
-                        print("DEBUG: Auto-select Google calendars failed: \(error)")
+                        Self.logger.error("Google calendar auto-select failed: \(error.localizedDescription, privacy: .public)")
                     }
                 }
 
@@ -117,7 +130,7 @@ class CalendarManager: ObservableObject {
                         }
                         allEvents.append(contentsOf: enriched)
                     } catch {
-                        print("DEBUG: Google Fetch error: \(error.localizedDescription)")
+                        Self.logger.error("Google calendar fetch failed: \(error.localizedDescription, privacy: .public)")
                     }
                 }
             }
@@ -128,11 +141,9 @@ class CalendarManager: ObservableObject {
                 if selectedOutlookCalendars.isEmpty {
                     do {
                         let available = try await outlookService.fetchAvailableCalendars()
-                        await MainActor.run {
-                            self.selectedOutlookCalendars = available
-                        }
+                        self.selectedOutlookCalendars = available
                     } catch {
-                        print("DEBUG: Auto-select Outlook calendars failed: \(error)")
+                        Self.logger.error("Outlook calendar auto-select failed: \(error.localizedDescription, privacy: .public)")
                     }
                 }
 
@@ -154,7 +165,7 @@ class CalendarManager: ObservableObject {
                         }
                         allEvents.append(contentsOf: enriched)
                     } catch {
-                        print("DEBUG: Outlook Fetch error: \(error.localizedDescription)")
+                        Self.logger.error("Outlook calendar fetch failed: \(error.localizedDescription, privacy: .public)")
                     }
                 }
             }
@@ -219,7 +230,9 @@ class CalendarManager: ObservableObject {
 
             if Task.isCancelled { return }
             let sorted = filtered.sorted { $0.startDate < $1.startDate }
-            await MainActor.run { self.upcomingEvents = sorted }
+            if self.upcomingEvents.map(\.id) != sorted.map(\.id) {
+                self.upcomingEvents = sorted
+            }
         }
     }
 }

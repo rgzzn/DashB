@@ -5,11 +5,16 @@
 //  Creato da Luca Ragazzini il 20/01/26.
 //
 
+import Foundation
 import SwiftData
 import SwiftUI
 
 @main
 struct DashBApp: App {
+    init() {
+        URLCache.shared = URLCache(memoryCapacity: 40 * 1024 * 1024, diskCapacity: 180 * 1024 * 1024)
+    }
+
     @StateObject private var weatherModel = WeatherModel()
     @StateObject private var calendarManager = CalendarManager()
     @StateObject private var rssModel = RSSModel()

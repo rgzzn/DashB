@@ -7,7 +7,9 @@
 
 import CoreImage.CIFilterBuiltins
 import Foundation
+import os
 import SwiftUI
+import UIKit
 
 struct QRCodeGenerator {
     private let context = CIContext()
@@ -54,23 +56,15 @@ struct NewsTickerView: View {
                 GeometryReader { geo in
                     ZStack(alignment: .bottomLeading) {
                         if let imageUrl = item.imageUrl, let url = URL(string: imageUrl) {
-                            AsyncImage(
-                                url: url,
-                                transaction: Transaction(animation: Motion.calm)
-                            ) { phase in
-                                switch phase {
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: geo.size.width, height: geo.size.height)
-                                        .clipped()
-                                        .transition(.opacity)
-                                case .empty, .failure:
-                                    fallbackBackground
-                                @unknown default:
-                                    fallbackBackground
-                                }
+                            CachedNewsImage(url: url) { image in
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: geo.size.width, height: geo.size.height)
+                                    .clipped()
+                                    .transition(.opacity)
+                            } placeholder: {
+                                fallbackBackground
                             }
                         } else {
                             fallbackBackground
@@ -254,6 +248,73 @@ struct NewsTickerView: View {
         guard qrCodeLink != link else { return }
         qrCodeLink = link
         currentQRCode = qrGenerator.generateQRCode(from: link)
+    }
+}
+
+private struct CachedNewsImage<Content: View, Placeholder: View>: View {
+    private var logger: Logger {
+        Logger(subsystem: Bundle.main.bundleIdentifier ?? "DashB", category: "NewsImages")
+    }
+
+    let url: URL
+    @ViewBuilder var content: (Image) -> Content
+    @ViewBuilder var placeholder: () -> Placeholder
+
+    @State private var image: UIImage?
+    @State private var loadTask: Task<Void, Never>?
+
+    var body: some View {
+        Group {
+            if let image {
+                content(Image(uiImage: image))
+            } else {
+                placeholder()
+            }
+        }
+        .task(id: url) {
+            await loadImage()
+        }
+        .onDisappear {
+            loadTask?.cancel()
+            loadTask = nil
+        }
+    }
+
+    @MainActor
+    private func loadImage() async {
+        if let cached = Self.cachedImage(for: url) {
+            image = cached
+            logger.debug("RSS image loaded from URLCache: \(url.absoluteString, privacy: .public)")
+            return
+        }
+
+        loadTask?.cancel()
+        loadTask = Task {
+            var request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 15)
+            request.setValue("image/*", forHTTPHeaderField: "Accept")
+
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard !Task.isCancelled, let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode), let loadedImage = UIImage(data: data) else {
+                    return
+                }
+
+                await MainActor.run {
+                    image = loadedImage
+                }
+                logger.info("RSS image loaded from network: \(url.absoluteString, privacy: .public)")
+            } catch {
+                logger.error("RSS image load failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+
+        await loadTask?.value
+    }
+
+    private static func cachedImage(for url: URL) -> UIImage? {
+        let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 15)
+        guard let response = URLCache.shared.cachedResponse(for: request) else { return nil }
+        return UIImage(data: response.data)
     }
 }
 

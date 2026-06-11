@@ -46,6 +46,7 @@ class GoogleCalendarService: NSObject, CalendarService {
         guard let url = URL(string: deviceAuthEndpoint) else { throw URLError(.badURL) }
 
         var request = URLRequest(url: url)
+        request.timeoutInterval = 20
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
@@ -107,6 +108,7 @@ class GoogleCalendarService: NSObject, CalendarService {
         guard let url = URL(string: tokenEndpoint) else { return false }
 
         var request = URLRequest(url: url)
+        request.timeoutInterval = 20
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
@@ -167,6 +169,7 @@ class GoogleCalendarService: NSObject, CalendarService {
         else { return false }
 
         var request = URLRequest(url: url)
+        request.timeoutInterval = 20
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
@@ -215,6 +218,7 @@ class GoogleCalendarService: NSObject, CalendarService {
             }
 
             var request = URLRequest(url: url)
+            request.timeoutInterval = 20
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -287,6 +291,7 @@ class GoogleCalendarService: NSObject, CalendarService {
             }
 
             var request = URLRequest(url: url)
+            request.timeoutInterval = 20
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
             let (data, response) = try await URLSession.shared.data(for: request)
